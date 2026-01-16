@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Сотрудники{% endblock %}
+
+{% block content %}
+<!-- Хлебные крошки -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'main:department_list' %}">Подразделения</a></li>
+        {% if department %}
+            <li class="breadcrumb-item active" aria-current="page">{{ department.name }}</li>
+        {% else %}
+            <li class="breadcrumb-item active" aria-current="page">Все сотрудники</li>
+        {% endif %}
+    </ol>
+</nav>
+
+<h1 class="mb-4">
+    👥
+    {% if department %}
+        Сотрудники: {{ department.name }}
+    {% else %}
+        Все сотрудники
+    {% endif %}
+</h1>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for emp in employees %}
+    <div class="col">
+        <div class="card h-100 shadow-sm border-0" style="transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="list-group list-group-flush">
+                <div class="list-group-item d-flex align-items-center p-3" style="gap: 12px;">
+                    {% if emp.image %}
+                        <img src="{{ emp.image.url }}"
+                             class="rounded flex-shrink-0"
+                             alt="Фото {{ emp.first_name }}"
+                             style="width: 60px; height: 60px; object-fit: cover; border: 1px solid #dee2e6;">
+                    {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width: 60px; height: 60px; border: 1px solid #dee2e6; font-size: 0.8rem;">
+                            <span class="text-muted">Нет фото</span>
+                        </div>
+                    {% endif %}
+
+                    <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                        <h6 class="mb-1 fw-semibold text-dark">{{ emp.last_name }} {{ emp.first_name }} {{ emp.second_name|default:"" }}</h6>
+                        <small class="text-muted mb-1">
+                            <i class="bi bi-briefcase"></i> {{ emp.position }}
+                        </small>
+                        <small class="text-muted mb-1">
+                            <i class="bi bi-building"></i> {{ emp.department }}
+                        </small>
+                        <small class="text-muted">
+                            <i class="bi bi-geo-alt"></i> {{ emp.location.code }}
+                        </small>
+                    </div>
+
+                    <a href="{% url 'main:employee_detail' emp.id %}"
+                       class="btn btn-sm btn-outline-primary flex-shrink-0"
+                       style="white-space: nowrap;">
+                        Подробнее
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">Сотрудники не найдены.</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Пагинация -->
+<div class="d-flex justify-content-center mt-4">
+    {% if employees.has_other_pages %}
+        <nav aria-label="Навигация по страницам">
+            <ul class="pagination">
+                {% if employees.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ employees.previous_page_number }}">Назад</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Назад</span>
+                    </li>
+                {% endif %}
+
+                {% for num in employees.paginator.page_range %}
+                    {% if employees.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if employees.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ employees.next_page_number }}">Вперед</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Вперед</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-2px)';
+        card.style.boxShadow = '0 8px 16px rgba(0,0,0,.1)';
+    });
+    card.addEventListener('mouseleave', () => {
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = '0 4px 8px rgba(0,0,0,.08)';
+    });
+});
+</script>
+{% endblock %}

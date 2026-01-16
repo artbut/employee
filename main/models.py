@@ -160,8 +160,11 @@ class Employee(models.Model):
     first_name = models.CharField(max_length=100, verbose_name='Имя')
     last_name = models.CharField(max_length=100, verbose_name='Фамилия')
     second_name = models.CharField(max_length=100, verbose_name='Отчество', blank=True, default='')
-    email = models.EmailField(max_length=50, unique=True)
+    email = models.EmailField(max_length=50, verbose_name='Электронная почта', unique=True)
+    kabinet = models.CharField(max_length=4, verbose_name='Кабинет', blank=True, default='')
+    phone = models.CharField(max_length=15, verbose_name='Телефон', blank=True, default='')
     image = models.ImageField(upload_to=get_employee_image_path,
+                              verbose_name='Фото',
                               null=True,
                               blank=True,
                               validators=[validate_image_file])
@@ -204,9 +207,9 @@ class Employee(models.Model):
         verbose_name_plural = 'Сотрудники'
 
     def __str__(self):
-        last_initial = self.last_name[0] if self.last_name else ''
+        last_initial = self.first_name[0] if self.first_name else ''
         second_initial = self.second_name[0] if self.second_name else ''
-        return f'{self.first_name} {last_initial}.{second_initial}.'.strip(' .')
+        return f'{self.last_name} {last_initial}.{second_initial}.'.strip(' .')
 
     def get_absolute_url(self):
         return f'/employee/{self.id}/'

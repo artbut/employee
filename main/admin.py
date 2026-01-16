@@ -57,20 +57,20 @@ class PositionAdmin(admin.ModelAdmin):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('last_name', 'first_name', 'second_name', 'login', 'department', 'position', 'organization', 'available', 'post_photo', 'created')
+    list_display = ('post_photo','last_name', 'first_name', 'second_name', 'login', 'department', 'position', 'organization', 'kabinet', 'phone', 'location_code', 'available', 'created')
     list_filter = ('available', 'department', 'position', 'department__organization', 'created', 'updated')
     search_fields = ('first_name', 'last_name', 'login', 'department__name', 'position__name')
     list_select_related = ('department', 'department__organization', 'position')
     ordering = ['-created']
     fieldsets = (
         ('Персональные данные', {
-            'fields': ('first_name', 'last_name', 'second_name', 'email', 'image', 'post_photo')
+            'fields': ('post_photo','last_name', 'first_name', 'second_name', 'email', 'image')
         }),
         ('Учётные данные', {
             'fields': ('login',)
         }),
         ('Место работы', {
-            'fields': ('department', 'position', 'location')
+            'fields': ('department', 'position', 'location', 'kabinet', 'phone')
         }),
         ('Статус', {
             'fields': ('available',)
@@ -83,10 +83,16 @@ class EmployeeAdmin(admin.ModelAdmin):
     organization.short_description = 'Организация'
     organization.admin_order_field = 'department__organization__name'
 
+    def location_code(self, obj):
+        """Возвращает код объекта из связанной модели Location"""
+        return obj.location.code if obj.location else '-'
+
+    location_code.short_description = 'Код объекта'  # Заголовок колонки в админке
+
     @admin.display(description="Изображение")
     def post_photo(self, employee):
         if employee.image:
-            return mark_safe(f"<img src='{employee.image.url}' width=50 height=50 style='object-fit: cover; border-radius: 4px;'>")
+            return mark_safe(f"<img src='{employee.image.url}' width=50 height=50 style='object-fit: cover; border-radius: 10px; border: 1px solid #cccccc;' />")
         return "Без фото"
 
     def save_model(self, request, obj, form, change):

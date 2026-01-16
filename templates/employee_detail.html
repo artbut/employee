@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ employee.last_name }} {{ employee.first_name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="Хлебные крошки" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'main:employee_list' %}">Сотрудники</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ employee.last_name }} {{ employee.first_name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm">
+            {% if employee.image %}
+                <img src="{{ employee.image.url }}" class="card-img-top" alt="Фото" style="height: 300px; object-fit: cover;">
+            {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
+                    <span class="text-muted">Нет фото</span>
+                </div>
+            {% endif %}
+            <div class="card-body text-center">
+                <h4>{{ employee.last_name }} {{ employee.first_name }}</h4>
+                {% if employee.second_name %}
+                    <p class="text-muted">{{ employee.second_name }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Информация о сотруднике</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <strong>Логин:</strong> {{ employee.login }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Должность:</strong> {{ employee.position }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Подразделение:</strong> {{ employee.department }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Организация:</strong> {{ employee.department.organization }}
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Объект:</strong> {{ employee.location.code }} — {{ employee.location.address }}
+                    </li>
+                    {% if employee.kabinet %}
+                        <li class="list-group-item">
+                            <strong>Кабинет:</strong> {{ employee.kabinet }}
+                        </li>
+                    {% endif %}
+                    {% if employee.phone %}
+                        <li class="list-group-item">
+                            <strong>Телефон:</strong> {{ employee.phone }}
+                        </li>
+                    {% endif %}
+                    <li class="list-group-item">
+                        <strong>Email:</strong>
+                        <a href="mailto:{{ employee.email }}">{{ employee.email }}</a>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Статус:</strong>
+                        <span class="badge {% if employee.available %}bg-success{% else %}bg-secondary{% endif %}">
+                            {% if employee.available %}Доступен{% else %}Недоступен{% endif %}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-footer text-end">
+                <a href="{% url 'main:employee_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
