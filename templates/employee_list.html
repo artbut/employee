@@ -24,51 +24,117 @@
     {% endif %}
 </h1>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% for emp in employees %}
-    <div class="col">
-        <div class="card h-100 shadow-sm border-0" style="transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="list-group list-group-flush">
-                <div class="list-group-item d-flex align-items-center p-3" style="gap: 12px;">
+<!-- Форма поиска -->
+<form method="get" class="mb-4">
+    <div class="input-group">
+        <input type="text"
+               name="search"
+               class="form-control form-control-lg"
+               placeholder="Поиск по ФИО, логину..."
+               value="{{ search|default:'' }}">
+        <button class="btn btn-outline-secondary" type="submit">
+            <i class="bi bi-search"></i> Поиск
+        </button>
+        {% if search %}
+            {% if department %}
+                <a href="{% url 'main:employees_by_department' department.id %}" class="btn btn-sm btn-outline-danger">
+                    Очистить
+                </a>
+            {% else %}
+                <a href="{% url 'main:employee_list' %}" class="btn btn-sm btn-outline-danger">
+                    Очистить
+                </a>
+            {% endif %}
+        {% endif %}
+    </div>
+</form>
+
+<!-- Таблица сотрудников -->
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Фото</th>
+                <th>ФИО</th>
+                <th>
+                    <a href="?{% if search %}search={{ search }}&{% endif %}{% if request.GET.order == 'position' %}order=-position{% else %}order=position{% endif %}"
+                       class="text-decoration-none text-dark d-flex align-items-center">
+                        Должность
+                        {% if request.GET.order == 'position' %}
+                            <i class="bi bi-sort-alpha-down ms-1" aria-hidden="true"></i>
+                        {% elif request.GET.order == '-position' %}
+                            <i class="bi bi-sort-alpha-up ms-1" aria-hidden="true"></i>
+                        {% else %}
+                            <i class="bi bi-arrow-down-up ms-1 text-muted" style="font-size: 0.8em;" aria-hidden="true"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th>Подразделение</th>
+                <th>Телефон</th>
+                <th>
+                    <a href="?{% if search %}search={{ search }}&{% endif %}{% if request.GET.order == 'location__code' %}order=-location__code{% else %}order=location__code{% endif %}"
+                       class="text-decoration-none text-dark d-flex align-items-center">
+                        Объект
+                        {% if request.GET.order == 'location__code' %}
+                            <i class="bi bi-sort-numeric-down ms-1" aria-hidden="true"></i>
+                        {% elif request.GET.order == '-location__code' %}
+                            <i class="bi bi-sort-numeric-up ms-1" aria-hidden="true"></i>
+                        {% else %}
+                            <i class="bi bi-arrow-down-up ms-1 text-muted" style="font-size: 0.8em;" aria-hidden="true"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in employees %}
+            <tr>
+                <td style="width: 80px;">
                     {% if emp.image %}
                         <img src="{{ emp.image.url }}"
-                             class="rounded flex-shrink-0"
-                             alt="Фото {{ emp.first_name }}"
-                             style="width: 60px; height: 60px; object-fit: cover; border: 1px solid #dee2e6;">
+                             class="rounded"
+                             alt="Фото {{ emp.last_name }} {{ emp.first_name }}"
+                             loading="lazy"
+                             style="width: 50px; height: 50px; object-fit: cover; border: 1px solid #dee2e6;">
                     {% else %}
-                        <div class="bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0"
-                             style="width: 60px; height: 60px; border: 1px solid #dee2e6; font-size: 0.8rem;">
-                            <span class="text-muted">Нет фото</span>
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                             style="width: 50px; height: 50px;">
+                            <i class="bi bi-person text-secondary" aria-hidden="true"></i>
                         </div>
                     {% endif %}
-
-                    <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                        <h6 class="mb-1 fw-semibold text-dark">{{ emp.last_name }} {{ emp.first_name }} {{ emp.second_name|default:"" }}</h6>
-                        <small class="text-muted mb-1">
-                            <i class="bi bi-briefcase"></i> {{ emp.position }}
-                        </small>
-                        <small class="text-muted mb-1">
-                            <i class="bi bi-building"></i> {{ emp.department }}
-                        </small>
-                        <small class="text-muted">
-                            <i class="bi bi-geo-alt"></i> {{ emp.location.code }}
-                        </small>
-                    </div>
-
+                </td>
+                <td>
+                    <strong>{{ emp.last_name }} {{ emp.first_name }}</strong>
+                    {% if emp.second_name %}
+                        <strong> {{ emp.second_name|first }}.</strong>
+                    {% endif %}
+                </td>
+                <td>{{ emp.position.name }}</td>
+                <td>{{ emp.department.name }}</td>
+                <td>{{ emp.phone|default:"—" }}</td>
+                <td>
+                    <span class="badge bg-primary">{{ emp.location.code }}</span>
+                    <small class="d-block text-muted">{{ emp.location.address|truncatechars:30 }}</small>
+                </td>
+                <td class="text-center" style="width: 120px;">
                     <a href="{% url 'main:employee_detail' emp.id %}"
-                       class="btn btn-sm btn-outline-primary flex-shrink-0"
-                       style="white-space: nowrap;">
-                        Подробнее
+                       class="btn btn-sm btn-outline-primary"
+                       title="Просмотр карточки сотрудника">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
                     </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">Сотрудники не найдены.</div>
-    </div>
-    {% endfor %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                    <i class="bi bi-people" style="font-size: 2rem;" aria-hidden="true"></i>
+                    <p class="mt-2 mb-0">Сотрудники не найдены</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <!-- Пагинация -->
@@ -78,7 +144,7 @@
             <ul class="pagination">
                 {% if employees.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ employees.previous_page_number }}">Назад</a>
+                        <a class="page-link" href="?{% if search %}search={{ search }}&{% endif %}page={{ employees.previous_page_number }}">Назад</a>
                     </li>
                 {% else %}
                     <li class="page-item disabled">
@@ -88,19 +154,19 @@
 
                 {% for num in employees.paginator.page_range %}
                     {% if employees.number == num %}
-                        <li class="page-item active">
+                        <li class="page-item active" aria-current="page">
                             <span class="page-link">{{ num }}</span>
                         </li>
                     {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            <a class="page-link" href="?{% if search %}search={{ search }}&{% endif %}page={{ num }}">{{ num }}</a>
                         </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if employees.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ employees.next_page_number }}">Вперед</a>
+                        <a class="page-link" href="?{% if search %}search={{ search }}&{% endif %}page={{ employees.next_page_number }}">Вперед</a>
                     </li>
                 {% else %}
                     <li class="page-item disabled">
@@ -115,15 +181,5 @@
 
 {% block extra_js %}
 <script>
-document.querySelectorAll('.card').forEach(card => {
-    card.addEventListener('mouseenter', () => {
-        card.style.transform = 'translateY(-2px)';
-        card.style.boxShadow = '0 8px 16px rgba(0,0,0,.1)';
-    });
-    card.addEventListener('mouseleave', () => {
-        card.style.transform = 'translateY(0)';
-        card.style.boxShadow = '0 4px 8px rgba(0,0,0,.08)';
-    });
-});
 </script>
 {% endblock %}
