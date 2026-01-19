@@ -1,7 +1,9 @@
 import os, re, uuid
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, F
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 def get_employee_image_path(instance, filename):
@@ -313,3 +315,172 @@ class Employee(models.Model):
 
     def get_absolute_url(self):
         return f'/employee/{self.id}/'
+
+
+class EquipmentType(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, verbose_name='Название типа', unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'equipment_type'
+        ordering = ['name']
+        verbose_name = 'Тип оборудования'
+        verbose_name_plural = 'Типы оборудования'
+
+    def __str__(self):
+        return self.name
+
+
+class Manufacturer(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, verbose_name='Производитель', unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'manufacturer'
+        ordering = ['name']
+        verbose_name = 'Производитель'
+        verbose_name_plural = 'Производители'
+
+    def __str__(self):
+        return self.name
+
+
+class Equipment(models.Model):
+    STATUS_CHOICES = [
+        ('storage', _('На складе')),
+        ('awaiting', _('Ожидает постановки на баланс')),
+        ('write_off', _('На списании')),
+        ('written_off', _('Списано')),
+        ('temporary', _('Выдано во временное пользование')),
+        ('assigned', _('Закреплено за сотрудником')),  # ← добавлено!
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    type = models.ForeignKey(
+        EquipmentType,
+        on_delete=models.PROTECT,
+        verbose_name='Тип оборудования',
+        related_name='equipment'
+    )
+    manufacturer = models.ForeignKey(
+        Manufacturer,
+        on_delete=models.PROTECT,
+        verbose_name='Производитель',
+        related_name='equipment'
+    )
+    model = models.CharField(max_length=150, verbose_name='Модель')
+
+    serial_number = models.CharField(
+        max_length=100,
+        verbose_name='Серийный номер',
+        unique=True,
+        help_text='Уникальный серийный номер'
+    )
+
+    inventory_number = models.CharField(
+        max_length=50,
+        verbose_name='Инвентарный номер',
+        blank=True,
+        null=True,
+        unique=True,
+        help_text='Номер в бухгалтерии'
+    )
+
+    year_of_release = models.PositiveSmallIntegerField(
+        verbose_name='Год выпуска',
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1970), MaxValueValidator(2030)]
+    )
+
+    warranty_until = models.DateField(
+        verbose_name='Гарантия до',
+        null=True,
+        blank=True
+    )
+
+    status = models.CharField(
+        max_length=20,
+        verbose_name='Статус',
+        choices=STATUS_CHOICES,
+        default='storage'
+    )
+
+    network_name = models.CharField(
+        max_length=100,
+        verbose_name='Сетевое имя',
+        blank=True,
+        null=True,
+        help_text='Имя в сети (например, PC-001)',
+        unique=True  # ← часто требуется уникальность
+    )
+
+    location = models.ForeignKey(
+        'Location',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Место нахождения',
+        related_name='equipment'
+    )
+
+    responsible = models.ForeignKey(
+        'Employee',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Ответственный',
+        related_name='assigned_equipment'  # ← лучше имя
+    )
+
+    comment = models.TextField(blank=True, verbose_name='Комментарий')
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'equipment'
+        ordering = ['-created']
+        verbose_name = 'Оборудование'
+        verbose_name_plural = 'Оборудование'
+        constraints = [
+            # Если статус "закреплено" — должен быть ответственный
+            models.CheckConstraint(
+                condition=(
+                        models.Q(status='assigned', responsible__isnull=False) |
+                        ~models.Q(status='assigned')
+                ),
+                name='assigned_requires_responsible'
+            ),
+            # Если статус "временно выдано" — должен быть ответственный
+            models.CheckConstraint(
+                condition=(
+                        models.Q(status='temporary', responsible__isnull=False) |
+                        ~models.Q(status='temporary')
+                ),
+                name='temporary_requires_responsible'
+            ),
+        ]
+
+    def clean(self):
+        """Дополнительная валидация"""
+        if self.status in ['assigned', 'temporary'] and not self.responsible:
+            raise ValidationError(
+                'При статусе "%s" необходимо указать ответственного.' % dict(self.STATUS_CHOICES)[self.status])
+
+        if self.warranty_until and self.year_of_release:
+            warranty_year = self.warranty_until.year
+            if warranty_year < self.year_of_release:
+                raise ValidationError('Гарантия не может заканчиваться раньше года выпуска.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.manufacturer} {self.model} (SN: {self.serial_number})"

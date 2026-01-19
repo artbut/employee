@@ -1,15 +1,24 @@
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
-from .models import Employee, Department
+from .models import Employee, Department, Equipment
 from django.db.models import Q, Count
 from .utils import apply_employee_filters_and_ordering
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
+import os
 
 def department_list(request):
     departments = Department.objects.annotate(
         employee_count=Count('emp')  # ← 'emp', а не 'employees'
     ).order_by('name')
     return render(request, 'department_list.html', {'departments': departments})
+
+def get_equipment_queryset():
+    return Equipment.objects.select_related(
+        'type', 'manufacturer', 'location', 'responsible__department'
+    ).order_by('-created')
 
 
 @login_required
@@ -89,3 +98,49 @@ def employee_history(request, id):
         'history_records': history_records,
     }
     return render(request, 'employee_history.html', context)
+
+
+@login_required
+def equipment_list(request):
+    query = request.GET.get('q', '').strip()
+
+    equipment_list = get_equipment_queryset()
+
+    if query:
+        equipment_list = equipment_list.filter(
+            Q(serial_number__icontains=query) |
+            Q(inventory_number__icontains=query) |
+            Q(model__icontains=query) |
+            Q(network_name__icontains=query) |
+            Q(manufacturer__name__icontains=query)
+        )
+
+    paginator = Paginator(equipment_list, 10)
+    page_number = request.GET.get('page')
+    equipment = paginator.get_page(page_number)
+
+    return render(request, 'equipment_list.html', {
+        'equipment': equipment,
+        'query': query
+    })
+
+
+@login_required
+def equipment_detail(request, id):
+    equip = get_object_or_404(get_equipment_queryset(), id=id)
+    return render(request, 'equipment_detail.html', {'equip': equip})
+
+
+@login_required
+def print_equipment_label(request, id):
+    """Отображает HTML-этикетку для печати"""
+    equipment = get_object_or_404(
+        Equipment.objects.select_related('type', 'manufacturer', 'location'),
+        id=id
+    )
+
+    context = {
+        'equip': equipment,
+        'company_name': 'ООО "ТехноЛайн"',  # или из settings
+    }
+    return render(request, 'labels/equipment_label.html', context)

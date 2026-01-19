@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Этикетка: {{ equip.serial_number }}</title>
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: white;
+        }
+
+        /* Стили только для печати */
+        @media print {
+            @page {
+                size: 100mm 50mm; /* Размер этикетки: ширина × высота */
+                margin: 2mm;
+            }
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .label-container {
+            width: 100mm;
+            height: 50mm;
+            padding: 3mm;
+            box-sizing: border-box;
+            border: 1px dashed #ccc; /* для предпросмотра */
+        }
+
+        .label-header {
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 2mm;
+        }
+
+        .label-row {
+            display: flex;
+            font-size: 9pt;
+            margin-bottom: 1mm;
+        }
+
+        .label-key {
+            width: 35%;
+            font-weight: bold;
+        }
+
+        .label-value {
+            width: 65%;
+        }
+    </style>
+</head>
+<body>
+    <div class="label-container">
+        <div class="label-header">{{ company_name }}</div>
+
+        <div class="label-row">
+            <div class="label-key">Тип:</div>
+            <div class="label-value">{{ equip.type.name }}</div>
+        </div>
+        <div class="label-row">
+            <div class="label-key">Модель:</div>
+            <div class="label-value">{{ equip.model }}</div>
+        </div>
+        <div class="label-row">
+            <div class="label-key">Серийный №:</div>
+            <div class="label-value">{{ equip.serial_number }}</div>
+        </div>
+        {% if equip.inventory_number %}
+        <div class="label-row">
+            <div class="label-key">Инв. №:</div>
+            <div class="label-value">{{ equip.inventory_number }}</div>
+        </div>
+        {% endif %}
+        {% if equip.location %}
+        <div class="label-row">
+            <div class="label-key">Объект:</div>
+            <div class="label-value">{{ equip.location.code }} — {{ equip.location.address|truncatechars:30 }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Кнопка "Печать" только в браузере -->
+    <div class="no-print text-center mt-3">
+        <button onclick="window.print()" class="btn btn-primary">🖨 Печать этикетки</button>
+        <a href="{% url 'main:equipment_detail' equip.id %}" class="btn btn-secondary ms-2">← Назад</a>
+    </div>
+
+    <script>
+        // Автоматическая печать при открытии (опционально)
+        // window.onload = function() { window.print(); };
+    </script>
+</body>
+</html>

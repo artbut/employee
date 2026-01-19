@@ -2,7 +2,7 @@ import os
 from django.contrib import admin
 from django.core.files.storage import default_storage
 from django.utils.safestring import mark_safe
-from .models import Organization, Location, Department, Position, Employee,EmployeeHistory
+from .models import Organization, Location, Department, Position, Employee,EmployeeHistory, EquipmentType, Manufacturer, Equipment
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
@@ -180,3 +180,48 @@ class EmployeeAdmin(admin.ModelAdmin):
         if obj.image and default_storage.exists(obj.image.path):
             default_storage.delete(obj.image.path)
         super().delete_model(request, obj)
+
+
+@admin.register(EquipmentType)
+class EquipmentTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created', 'updated')
+    search_fields = ('name',)
+
+
+@admin.register(Manufacturer)
+class ManufacturerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created', 'updated')
+    search_fields = ('name',)
+
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = (
+        'type', 'manufacturer', 'model', 'serial_number',
+        'inventory_number', 'status', 'location', 'responsible',
+        'warranty_until', 'created'
+    )
+    list_filter = (
+        'type', 'manufacturer', 'status', 'year_of_release',
+        'warranty_until', 'location', 'created'
+    )
+    search_fields = (
+        'model', 'serial_number', 'inventory_number',
+        'network_name', 'comment'
+    )
+    readonly_fields = ('created', 'updated')
+    fieldsets = (
+        ('Общее', {
+            'fields': ('type', 'manufacturer', 'model', 'serial_number', 'inventory_number')
+        }),
+        ('Гарантия и дата', {
+            'fields': ('year_of_release', 'warranty_until')
+        }),
+        ('Статус и местоположение', {
+            'fields': ('status', 'location', 'responsible', 'network_name')
+        }),
+        ('Комментарий', {
+            'fields': ('comment',)
+        }),
+    )
+    autocomplete_fields = ('responsible', 'location')
