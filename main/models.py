@@ -1,8 +1,7 @@
-import os
-import re
-import uuid
+import os, re, uuid
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q, F
 
 
 def get_employee_image_path(instance, filename):
@@ -153,6 +152,107 @@ class Position(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class EmployeeHistory(models.Model):
+    """История изменений сотрудника: переводы, смена должности, назначения и т.д."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    employee = models.ForeignKey(
+        'Employee',
+        on_delete=models.CASCADE,
+        verbose_name='Сотрудник',
+        related_name='history_records'  # ← избегаем конфликта с возможным полем 'history'
+    )
+
+    department = models.ForeignKey(
+        'Department',
+        on_delete=models.PROTECT,  # ← лучше PROTECT, чем SET_NULL
+        verbose_name='Подразделение'
+    )
+
+    position = models.ForeignKey(
+        'Position',
+        on_delete=models.PROTECT,
+        verbose_name='Должность'
+    )
+
+    location = models.ForeignKey(
+        'Location',
+        on_delete=models.PROTECT,
+        verbose_name='Место нахождения'
+    )
+
+    start_date = models.DateField(
+        verbose_name='Начало периода',
+        help_text='Дата вступления в должность / перевода'
+    )
+
+    end_date = models.DateField(
+        verbose_name='Окончание периода',
+        null=True,
+        blank=True,
+        help_text='Оставьте пустым, если сотрудник работает по настоящее время'
+    )
+
+    reason = models.CharField(
+        max_length=255,
+        verbose_name='Причина изменения',
+        blank=True,
+        help_text='Например: повышение, перевод, реорганизация, совмещение'
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Текущая запись',
+        help_text='Отметьте, если это актуальное назначение сотрудника'
+    )
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_history'
+        verbose_name = 'Запись истории сотрудника'
+        verbose_name_plural = 'История сотрудников'
+        ordering = ['-start_date']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_date__isnull=True) | models.Q(start_date__lt=models.F('end_date')),
+                name='check_end_date_after_start_date'
+            ),
+        ]
+
+    def clean(self):
+        """Валидация на уровне модели"""
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise ValidationError({
+                'end_date': 'Дата окончания не может быть раньше даты начала.'
+            })
+
+        # Проверка: только одна запись может быть активной
+        if self.is_active and self.employee_id:
+            active_count = EmployeeHistory.objects.filter(
+                employee=self.employee,
+                is_active=True
+            ).exclude(pk=self.pk).count()
+            if active_count > 0:
+                raise ValidationError(
+                    'У сотрудника уже есть активная запись в истории. '
+                    'Сначала завершите предыдущую (снимите галочку "Текущая запись" или укажите end_date).'
+                )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # вызываем валидацию
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        status = 'по н.в.' if not self.end_date else self.end_date
+        return (
+            f"{self.employee} — {self.department} / {self.position} "
+            f"({self.start_date} – {status})"
+        )
 
 
 class Employee(models.Model):

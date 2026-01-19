@@ -3,112 +3,116 @@
 {% block title %}{{ employee.last_name }} {{ employee.first_name }}{% endblock %}
 
 {% block content %}
-<nav aria-label="Хлебные крошки" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'main:department_list' %}">Подразделения</a></li>
-        <li class="breadcrumb-item">
-            <a href="{% url 'main:employees_by_department' employee.department.id %}">
-                {{ employee.department.name }}
-            </a>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">
-            {{ employee.last_name }} {{ employee.first_name|first }}.
-            {% if employee.second_name %}{{ employee.second_name|first }}.{% endif %}
-        </li>
-    </ol>
-</nav>
+    <nav aria-label="Хлебные крошки" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'main:department_list' %}">Подразделения</a></li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'main:employees_by_department' employee.department.id %}">
+                    {{ employee.department.name }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ employee.last_name }} {{ employee.first_name|first }}.
+                {% if employee.second_name %}{{ employee.second_name|first }}.{% endif %}
+            </li>
+        </ol>
+    </nav>
 
-<div class="row g-4">
-    <!-- Фото и ФИО -->
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            {% if employee.image %}
-                <img src="{{ employee.image.url }}"
-                     class="card-img-top mx-auto mt-3 rounded"
-                     alt="Фотография сотрудника {{ employee.last_name }} {{ employee.first_name }}"
-                     style="height: 200px; width: auto; object-fit: cover; border: 1px solid #e9ecef;">
-            {% else %}
-                <div class="d-flex align-items-center justify-content-center bg-light mx-auto mt-3 rounded"
-                     style="height: 200px; width: 160px; border: 1px solid #e9ecef;">
-                    <i class="bi bi-person-circle text-secondary" style="font-size: 4rem;"></i>
-                </div>
-            {% endif %}
-            <div class="card-body text-center">
-                <h4 class="mb-1">{{ employee.last_name }} {{ employee.first_name }}</h4>
-                {% if employee.second_name %}
-                    <p class="text-muted mb-0">{{ employee.second_name }}</p>
+    <div class="row g-4">
+        <!-- Фото и ФИО -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                {% if employee.image %}
+                    <img src="{{ employee.image.url }}"
+                         class="card-img-top mx-auto mt-3 rounded"
+                         alt="Фотография сотрудника {{ employee.last_name }} {{ employee.first_name }}"
+                         style="height: 200px; width: auto; object-fit: cover; border: 1px solid #e9ecef;">
+                {% else %}
+                    <div class="d-flex align-items-center justify-content-center bg-light mx-auto mt-3 rounded"
+                         style="height: 200px; width: 160px; border: 1px solid #e9ecef;">
+                        <i class="bi bi-person-circle text-secondary" style="font-size: 4rem;"></i>
+                    </div>
                 {% endif %}
-                <p class="text-muted small mb-0 mt-2">
-                    {{ employee.position.name }}
-                </p>
+                <div class="card-body text-center">
+                    <h4 class="mb-1">{{ employee.last_name }} {{ employee.first_name }}</h4>
+                    {% if employee.second_name %}
+                        <p class="text-muted mb-0">{{ employee.second_name }}</p>
+                    {% endif %}
+                    <p class="text-muted small mb-0 mt-2">
+                        {{ employee.position.name }}
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Детальная информация -->
-    <div class="col-lg-8">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 d-flex align-items-center">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Информация о сотруднике
-                </h5>
-            </div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 fw-normal text-muted">Логин</dt>
-                    <dd class="col-sm-8 mb-2">{{ employee.login }}</dd>
+        <!-- Детальная информация -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Информация о сотруднике
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 fw-normal text-muted">Логин</dt>
+                        <dd class="col-sm-8 mb-2">{{ employee.login }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Должность</dt>
-                    <dd class="col-sm-8 mb-2">{{ employee.position.name }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Должность</dt>
+                        <dd class="col-sm-8 mb-2">{{ employee.position.name }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Подразделение</dt>
-                    <dd class="col-sm-8 mb-2">{{ employee.department.name }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Подразделение</dt>
+                        <dd class="col-sm-8 mb-2">{{ employee.department.name }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Организация</dt>
-                    <dd class="col-sm-8 mb-2">{{ employee.department.organization.name }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Организация</dt>
+                        <dd class="col-sm-8 mb-2">{{ employee.department.organization.name }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Место нахождения</dt>
-                    <dd class="col-sm-8 mb-2">
-                        <span class="badge bg-primary me-1">{{ employee.location.code }}</span>
-                        {{ employee.location.address }}
-                    </dd>
-
-                    {% if employee.kabinet %}
-                        <dt class="col-sm-4 fw-normal text-muted">Кабинет</dt>
-                        <dd class="col-sm-8 mb-2">{{ employee.kabinet }}</dd>
-                    {% endif %}
-
-                    {% if employee.phone %}
-                        <dt class="col-sm-4 fw-normal text-muted">Телефон</dt>
+                        <dt class="col-sm-4 fw-normal text-muted">Место нахождения</dt>
                         <dd class="col-sm-8 mb-2">
-                            <a href="tel:{{ employee.phone }}" class="text-decoration-none">
-                                {{ employee.phone }}
+                            <span class="badge bg-primary me-1">{{ employee.location.code }}</span>
+                            {{ employee.location.address }}
+                        </dd>
+
+                        {% if employee.kabinet %}
+                            <dt class="col-sm-4 fw-normal text-muted">Кабинет</dt>
+                            <dd class="col-sm-8 mb-2">{{ employee.kabinet }}</dd>
+                        {% endif %}
+
+                        {% if employee.phone %}
+                            <dt class="col-sm-4 fw-normal text-muted">Телефон</dt>
+                            <dd class="col-sm-8 mb-2">
+                                <a href="tel:{{ employee.phone }}" class="text-decoration-none">
+                                    {{ employee.phone }}
+                                </a>
+                            </dd>
+                        {% endif %}
+
+                        <dt class="col-sm-4 fw-normal text-muted">Email</dt>
+                        <dd class="col-sm-8 mb-2">
+                            <a href="mailto:{{ employee.email }}" class="text-decoration-none">
+                                {{ employee.email }}
                             </a>
                         </dd>
-                    {% endif %}
 
-                    <dt class="col-sm-4 fw-normal text-muted">Email</dt>
-                    <dd class="col-sm-8 mb-2">
-                        <a href="mailto:{{ employee.email }}" class="text-decoration-none">
-                            {{ employee.email }}
-                        </a>
-                    </dd>
-
-                    <dt class="col-sm-4 fw-normal text-muted">Статус</dt>
-                    <dd class="col-sm-8 mb-0">
+                        <dt class="col-sm-4 fw-normal text-muted">Статус</dt>
+                        <dd class="col-sm-8 mb-0">
                         <span class="badge {% if employee.available %}bg-success{% else %}bg-secondary{% endif %}">
                             {% if employee.available %}Доступен{% else %}Недоступен{% endif %}
                         </span>
-                    </dd>
-                </dl>
-            </div>
-            <div class="card-footer bg-light text-end">
-                <a href="{% url 'main:employees_by_department' employee.department.id %}" class="btn btn-outline-primary">
-                    ← Назад к подразделению
-                </a>
+                        </dd>
+                    </dl>
+                </div>
+                <div class="card-footer bg-light d-flex justify-content-between">
+                    <a href="{% url 'main:employees_by_department' employee.department.id %}"
+                       class="btn btn-outline-primary">
+                        ← Назад к подразделению
+                    </a>
+                    <a href="{% url 'main:employee_history' employee.id %}" class="btn btn-outline-info">
+                        📜 История назначений
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}

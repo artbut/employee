@@ -2,8 +2,7 @@ import os
 from django.contrib import admin
 from django.core.files.storage import default_storage
 from django.utils.safestring import mark_safe
-from .models import Organization, Location, Department, Position, Employee
-
+from .models import Organization, Location, Department, Position, Employee,EmployeeHistory
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
@@ -55,6 +54,77 @@ class PositionAdmin(admin.ModelAdmin):
     ordering = ['name']
 
 
+@admin.register(EmployeeHistory)
+class EmployeeHistoryAdmin(admin.ModelAdmin):
+    list_display = (
+        'employee_short',
+        'department',
+        'position',
+        'location_code',
+        'start_date',
+        'end_date',
+        'is_active',
+        'reason'
+    )
+    list_filter = ('is_active', 'department', 'position', 'start_date')
+    search_fields = (
+        'employee__last_name',
+        'employee__first_name',
+        'employee__login',
+        'reason'
+    )
+    autocomplete_fields = ('employee', 'department', 'position', 'location')
+    readonly_fields = ('created', 'updated')
+    ordering = ('-start_date',)
+
+    def employee_short(self, obj):
+        emp = obj.employee
+        second_initial = f"{emp.second_name[0]}." if emp.second_name else ""
+        return f"{emp.last_name} {emp.first_name[0]}.{second_initial}"
+    employee_short.short_description = 'Сотрудник'
+    employee_short.admin_order_field = 'employee__last_name'
+
+    def location_code(self, obj):
+        return obj.location.code if obj.location else "-"
+    location_code.short_description = 'Код объекта'
+
+    fieldsets = (
+        ('Основное', {
+            'fields': (
+                'employee',
+                ('department', 'position', 'location'),
+                ('start_date', 'end_date'),
+                'is_active',
+                'reason'
+            )
+        }),
+        ('Служебное', {
+            'fields': ('created', 'updated'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        obj.full_clean()  # активирует вашу валидацию (is_active, даты и т.д.)
+        super().save_model(request, obj, form, change)
+
+
+# Inline для истории внутри карточки сотрудника
+class EmployeeHistoryInline(admin.TabularInline):
+    model = EmployeeHistory
+    extra = 0
+    fields = ('department', 'position', 'location', 'start_date', 'end_date', 'is_active', 'reason')
+    autocomplete_fields = ('department', 'position', 'location')
+    readonly_fields = ('created', 'updated')
+    show_change_link = True  # позволяет перейти к полной записи
+
+    # Опционально: подсветка активной записи
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('department', 'position', 'location')
+
+
+# Обновите EmployeeAdmin: добавьте inline
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('post_photo','last_name', 'first_name', 'second_name', 'login', 'department', 'position', 'organization', 'kabinet', 'phone', 'location_code', 'available', 'created')
@@ -77,6 +147,7 @@ class EmployeeAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('created', 'updated', 'post_photo')
+    inlines = [EmployeeHistoryInline]
 
     def organization(self, obj):
         return obj.department.organization.name if obj.department.organization else '-'

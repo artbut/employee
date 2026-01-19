@@ -105,7 +105,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <strong>{{ emp.last_name }} {{ emp.first_name }}</strong>
+                    <strong>{{ emp.last_name }} {{ emp.first_name|first }}.</strong>
                     {% if emp.second_name %}
                         <strong> {{ emp.second_name|first }}.</strong>
                     {% endif %}

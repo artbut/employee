@@ -3,6 +3,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from .models import Employee, Department
 from django.db.models import Q, Count
+from .utils import apply_employee_filters_and_ordering
 
 def department_list(request):
     departments = Department.objects.annotate(
@@ -13,49 +14,48 @@ def department_list(request):
 
 @login_required
 def employees_by_department(request, id):
-    """Отображает сотрудников выбранного подразделения"""
     department = get_object_or_404(Department, id=id)
-    employee_list = Employee.objects.select_related(
-        'position', 'location'
-    ).filter(department=department).order_by('last_name', 'first_name')
 
+    # Только сотрудники этого подразделения
+    employee_list = Employee.objects.select_related('position', 'location').filter(department=department)
+
+    # Параметры из запроса
+    search_query = request.GET.get('search', '').strip()
+    order_param = request.GET.get('order', '')
+
+    # Применяем фильтрацию и сортировку
+    employee_list = apply_employee_filters_and_ordering(employee_list, search_query, order_param)
+
+    # Пагинация
     paginator = Paginator(employee_list, 12)
     page_number = request.GET.get('page')
     employees = paginator.get_page(page_number)
 
     context = {
         'employees': employees,
-        'department': department
+        'department': department,
+        'search': search_query,
     }
     return render(request, 'employee_list.html', context)
 
 
 @login_required
 def employee_list(request):
-    """Отображает всех сотрудников с возможностью поиска"""
-    # Начинаем с полного списка
-    employee_list = Employee.objects.select_related(
-        'department', 'position', 'location'
-    ).all().order_by('last_name', 'first_name')
+    # Начинаем с полного списка сотрудников
+    employee_list = Employee.objects.select_related('department', 'position', 'location')
 
-    # Получаем поисковый запрос из GET-параметров
+    # Получаем параметры из запроса
     search_query = request.GET.get('search', '').strip()
+    order_param = request.GET.get('order', '')
 
-    # Если есть запрос — фильтруем
-    if search_query:
-        employee_list = employee_list.filter(
-            Q(first_name__icontains=search_query) |
-            Q(last_name__icontains=search_query) |
-            Q(second_name__icontains=search_query) |
-            Q(login__icontains=search_query)
-        )
+    # Применяем фильтрацию и сортировку
+    employee_list = apply_employee_filters_and_ordering(employee_list, search_query, order_param)
 
     # Пагинация
-    paginator = Paginator(employee_list, 12)  # 12 сотрудников на странице
+    paginator = Paginator(employee_list, 12)
     page_number = request.GET.get('page')
     employees = paginator.get_page(page_number)
 
-    # Контекст
     context = {
         'employees': employees,
         'search': search_query,
@@ -75,3 +75,17 @@ def employee_detail(request, id):
         'employee': employee
     }
     return render(request, 'employee_detail.html', context)
+
+
+@login_required
+def employee_history(request, id):
+    employee = get_object_or_404(Employee, id=id)
+    history_records = employee.history_records.select_related(
+        'department', 'position', 'location'
+    ).order_by('-start_date')
+
+    context = {
+        'employee': employee,
+        'history_records': history_records,
+    }
+    return render(request, 'employee_history.html', context)
