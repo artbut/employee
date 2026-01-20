@@ -19,10 +19,12 @@
                 size: 100mm 50mm; /* Размер этикетки: ширина × высота */
                 margin: 2mm;
             }
+
             body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
+
             .no-print {
                 display: none !important;
             }
@@ -59,44 +61,60 @@
     </style>
 </head>
 <body>
-    <div class="label-container">
-        <div class="label-header">{{ company_name }}</div>
+<div class="label-container">
+{#    <div class="label-header">{{ company_name }}</div>#}
 
-        <div class="label-row">
-            <div class="label-key">Тип:</div>
-            <div class="label-value">{{ equip.type.name }}</div>
-        </div>
-        <div class="label-row">
-            <div class="label-key">Модель:</div>
-            <div class="label-value">{{ equip.model }}</div>
-        </div>
-        <div class="label-row">
-            <div class="label-key">Серийный №:</div>
-            <div class="label-value">{{ equip.serial_number }}</div>
-        </div>
-        {% if equip.inventory_number %}
+    <!-- Основные данные -->
+    <div class="label-row">
+        <div class="label-key">Тип:</div>
+        <div class="label-value">{{ equip.type.name }}</div>
+    </div>
+    <div class="label-row">
+        <div class="label-key">Модель:</div>
+        <div class="label-value">{{ equip.model }}</div>
+    </div>
+    <div class="label-row">
+        <div class="label-key">Серийный №:</div>
+        <div class="label-value">{{ equip.serial_number }}</div>
+    </div>
+    {% if equip.inventory_number %}
         <div class="label-row">
             <div class="label-key">Инв. №:</div>
             <div class="label-value">{{ equip.inventory_number }}</div>
         </div>
-        {% endif %}
-        {% if equip.location %}
-        <div class="label-row">
-            <div class="label-key">Объект:</div>
-            <div class="label-value">{{ equip.location.code }} — {{ equip.location.address|truncatechars:30 }}</div>
-        </div>
-        {% endif %}
+    {% endif %}
+{#    {% if equip.location %}#}
+{#        <div class="label-row">#}
+{#            <div class="label-key">Объект:</div>#}
+{#            <div class="label-value">{{ equip.location.code }} — {{ equip.location.address|truncatechars:30 }}</div>#}
+{#        </div>#}
+{#    {% endif %}#}
+{#    {% if equip.responsible %}#}
+{#        <div class="label-row">#}
+{#            <div class="label-key">Ответственный:</div>#}
+{#            <div class="label-value">#}
+{#                {{ equip.responsible.last_name }} {{ equip.responsible.first_name|first }}.#}
+{#                {% if equip.responsible.second_name %}{{ equip.responsible.second_name|first }}.{% endif %}#}
+{#            </div>#}
+{#        </div>#}
+{#    {% endif %}#}
+    <!-- Штрихкод -->
+    <div class="text-center mt-2" style="margin-top: 4mm;">
+        <img src="data:image/png;base64,{{ barcode_base64 }}"
+             alt="Штрихкод"
+             style="width: 26mm; height: auto; max-height: 12mm;">
+        <div style="font-size: 7pt; margin-top: 1mm;">{{ equip.serial_number }}</div>
     </div>
+</div>
+<!-- Кнопка "Печать" только в браузере -->
+<div class="no-print text-center mt-3">
+    <button onclick="window.print()" class="btn btn-primary">🖨 Печать этикетки</button>
+    <a href="{% url 'main:equipment_detail' equip.id %}" class="btn btn-secondary ms-2">← Назад</a>
+</div>
 
-    <!-- Кнопка "Печать" только в браузере -->
-    <div class="no-print text-center mt-3">
-        <button onclick="window.print()" class="btn btn-primary">🖨 Печать этикетки</button>
-        <a href="{% url 'main:equipment_detail' equip.id %}" class="btn btn-secondary ms-2">← Назад</a>
-    </div>
-
-    <script>
-        // Автоматическая печать при открытии (опционально)
-        // window.onload = function() { window.print(); };
-    </script>
+<script>
+    // Автоматическая печать при открытии (опционально)
+    // window.onload = function() { window.print(); };
+</script>
 </body>
 </html>
