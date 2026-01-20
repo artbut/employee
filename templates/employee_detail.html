@@ -114,5 +114,43 @@
                 </div>
             </div>
         </div>
+    {% if documents %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Документы ({{ documents|length }})
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for doc in documents %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ doc.name }}</strong>
+                            {% if doc.type %}
+                                <span class="badge bg-secondary ms-2">{{ doc.type.name }}</span>
+                            {% endif %}
+                            {% if doc.description %}
+                                <div class="text-muted small mt-1">{{ doc.description|truncatechars:80 }}</div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary me-2"
+                               title="Скачать файл">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <span class="text-muted small">{{ doc.file_extension|upper }} · {{ doc.file_size_mb }} МБ</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
     </div>
 {% endblock %}

@@ -87,14 +87,17 @@ def employee_list(request):
 
 @login_required
 def employee_detail(request, id):
-    """Отображает детальную информацию о сотруднике"""
     employee = get_object_or_404(
         Employee.objects.select_related('department', 'position', 'location'),
         id=id
     )
 
+    # Получаем активные документы сотрудника
+    documents = employee.documents.filter(is_active=True).select_related('type').order_by('-created')
+
     context = {
-        'employee': employee
+        'employee': employee,
+        'documents': documents,
     }
     return render(request, 'employee_detail.html', context)
 

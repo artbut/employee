@@ -5,6 +5,43 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+def get_employee_document_path(instance, filename):
+    """Путь: documents/employee_id/YYYY/MM/DD/filename"""
+    ext = os.path.splitext(filename)[1].lower()
+    safe_filename = f"{uuid.uuid4().hex}{ext}"
+    from django.utils import timezone
+    now = timezone.now()
+    return f"documents/{instance.employee.id}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
+
+
+def validate_document_file(value):
+    """Валидация загружаемого документа"""
+    # 1. Размер
+    max_size = 10 * 1024 * 1024  # 10 МБ
+    if value.size > max_size:
+        raise ValidationError(f'Размер файла не должен превышать 10 МБ. Текущий: {value.size / 1024 / 1024:.1f} МБ.')
+
+    # 2. Расширения (только безопасные)
+    allowed_extensions = {
+        '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+        '.jpg', '.jpeg', '.png', '.zip', '.rar'
+    }
+    ext = os.path.splitext(value.name)[1].lower()
+    if ext not in allowed_extensions:
+        raise ValidationError(
+            f'Недопустимый формат файла: {ext}. '
+            f'Разрешены: {", ".join(sorted(allowed_extensions))}'
+        )
+
+    # 3. Защита от двойного расширения (например, .pdf.exe)
+    base_name = os.path.basename(value.name)
+    if base_name.count('.') > 1:
+        # Разрешаем только один дополнительный символ (например, "file.tar.gz")
+        parts = base_name.split('.')
+        if len(parts) > 3 or (len(parts) == 3 and parts[-1] not in {'gz', 'bz2'}):
+            raise ValidationError('Подозрительное имя файла. Убедитесь, что расширение корректно.')
+
+
 
 def get_employee_image_path(instance, filename):
     """Генерация пути с датой и UUID, чтобы избежать конфликтов имён файлов"""
@@ -484,3 +521,103 @@ class Equipment(models.Model):
 
     def __str__(self):
         return f"{self.manufacturer} {self.model} (SN: {self.serial_number})"
+
+
+class DocumentType(models.Model):
+    """Тип документа: Приказ, Договор, Скан паспорта и т.д."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, verbose_name='Тип документа', unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'document_type'
+        verbose_name = 'Тип документа'
+        verbose_name_plural = 'Типы документов'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Document(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    name = models.CharField(max_length=150, verbose_name='Название документа')
+
+    type = models.ForeignKey(
+        DocumentType,
+        on_delete=models.PROTECT,
+        verbose_name='Тип документа',
+        related_name='documents',
+        null=True,
+        blank=True
+    )
+
+    employee = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        verbose_name='Сотрудник',
+        related_name='documents'
+    )
+
+    file = models.FileField(
+        upload_to=get_employee_document_path,
+        verbose_name='Файл документа',
+        validators=[validate_document_file],
+        help_text='Поддерживаются: PDF, DOC/X, XLS/X, изображения, архивы (до 10 МБ)'
+    )
+
+    description = models.TextField(
+        verbose_name='Описание',
+        blank=True,
+        help_text='Дополнительная информация о документе'
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активен',
+        help_text='Снимите галочку, чтобы скрыть документ (не удаляя файл)'
+    )
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'document'
+        ordering = ['-created']  # ← новые документы сверху
+        verbose_name = 'Документ'
+        verbose_name_plural = 'Документы'
+        indexes = [
+            models.Index(fields=['employee', '-created']),
+            models.Index(fields=['type']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.employee.last_name} {self.employee.first_name[0]}.)"
+
+    def clean(self):
+        """Дополнительная валидация"""
+        if self.file:
+            # Проверка: имя файла не должно содержать запрещённых символов
+            bad_chars = '<>:"/\\|?*'
+            if any(c in self.file.name for c in bad_chars):
+                raise ValidationError({
+                    'file': 'Имя файла содержит недопустимые символы: <>:"/\\|?*'
+                })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def file_extension(self):
+        """Возвращает расширение файла без точки, например: 'pdf'"""
+        _, ext = os.path.splitext(self.file.name)
+        return ext.lower().lstrip('.')
+
+    @property
+    def file_size_mb(self):
+        """Возвращает размер файла в МБ (округлённый)"""
+        if self.file and self.file.size:
+            return round(self.file.size / (1024 * 1024), 2)
+        return 0

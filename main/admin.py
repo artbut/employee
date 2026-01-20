@@ -2,7 +2,9 @@ import os
 from django.contrib import admin
 from django.core.files.storage import default_storage
 from django.utils.safestring import mark_safe
-from .models import Organization, Location, Department, Position, Employee,EmployeeHistory, EquipmentType, Manufacturer, Equipment
+from .models import Organization, Location, Department, Position, Employee, EmployeeHistory, EquipmentType, \
+    Manufacturer, Equipment, Document, DocumentType
+
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
@@ -225,3 +227,28 @@ class EquipmentAdmin(admin.ModelAdmin):
         }),
     )
     autocomplete_fields = ('responsible', 'location')
+
+
+@admin.register(DocumentType)
+class DocumentTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created')
+    search_fields = ('name',)
+    ordering = ['name']
+
+
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'employee_short', 'type', 'file_link', 'is_active', 'created')
+    list_filter = ('type', 'is_active', 'created')
+    search_fields = ('name', 'employee__last_name', 'employee__first_name')
+    autocomplete_fields = ('employee', 'type')
+
+    def employee_short(self, obj):
+        return f"{obj.employee.last_name} {obj.employee.first_name[0]}."
+    employee_short.short_description = 'Сотрудник'
+
+    def file_link(self, obj):
+        if obj.file:
+            return mark_safe(f'<a href="{obj.file.url}" target="_blank">📄 Открыть</a>')
+        return "—"
+    file_link.short_description = 'Файл'
