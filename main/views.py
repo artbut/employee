@@ -13,6 +13,7 @@ from barcode import Code128
 from barcode.writer import ImageWriter
 from io import BytesIO
 import base64
+from collections import defaultdict
 
 
 def get_equipment_queryset():
@@ -32,6 +33,11 @@ def department_list(request):
         'departments': departments,
         'equipment_types': equipment_types
     })
+
+
+def equipment_main(request):
+    equipment_types = EquipmentType.objects.all().order_by('name')
+    return render(request, 'equipment_main.html', {'equipment_types': equipment_types})
 
 
 @login_required
@@ -92,15 +98,28 @@ def employee_detail(request, id):
         id=id
     )
 
-    # Получаем активные документы сотрудника
-    documents = employee.documents.filter(is_active=True).select_related('type').order_by('-created')
+    # Получаем активные документы и группируем по типу
+    documents = employee.documents.filter(is_active=True).select_related('type').order_by('type__name', '-created')
+
+    # Группировка: {тип: [документы]}
+    grouped_docs = defaultdict(list)
+    no_type_docs = []  # документы без типа
+
+    for doc in documents:
+        if doc.type:
+            grouped_docs[doc.type].append(doc)
+        else:
+            no_type_docs.append(doc)
+
+    # Сортируем типы по имени
+    sorted_groups = sorted(grouped_docs.items(), key=lambda x: x[0].name)
 
     context = {
         'employee': employee,
-        'documents': documents,
+        'grouped_docs': sorted_groups,
+        'no_type_docs': no_type_docs,
     }
     return render(request, 'employee_detail.html', context)
-
 
 @login_required
 def employee_history(request, id):
