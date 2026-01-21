@@ -98,12 +98,10 @@ def employee_detail(request, id):
         id=id
     )
 
-    # Получаем активные документы и группируем по типу
+    # === Документы ===
     documents = employee.documents.filter(is_active=True).select_related('type').order_by('type__name', '-created')
-
-    # Группировка: {тип: [документы]}
     grouped_docs = defaultdict(list)
-    no_type_docs = []  # документы без типа
+    no_type_docs = []
 
     for doc in documents:
         if doc.type:
@@ -111,13 +109,19 @@ def employee_detail(request, id):
         else:
             no_type_docs.append(doc)
 
-    # Сортируем типы по имени
     sorted_groups = sorted(grouped_docs.items(), key=lambda x: x[0].name)
+
+    # === Оборудование ===
+    equipment = Equipment.objects.filter(
+        responsible=employee,
+        status__in=['assigned', 'temporary']  # только активные назначения
+    ).select_related('type', 'manufacturer', 'location').order_by('-created')
 
     context = {
         'employee': employee,
         'grouped_docs': sorted_groups,
         'no_type_docs': no_type_docs,
+        'equipment': equipment,  # ← добавлено
     }
     return render(request, 'employee_detail.html', context)
 

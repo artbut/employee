@@ -6,82 +6,90 @@
 {% block content %}
 <h1 class="mb-4">🖨 Учёт оборудования</h1>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    <!-- Всё оборудование -->
-    <div class="col">
-        <a href="{% url 'main:equipment_list' %}" class="text-decoration-none">
-            <div class="card h-100 shadow-sm border-0 text-dark">
-                <div class="card-body d-flex flex-column p-3">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-success bg-gradient rounded-3 d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                             style="width: 50px; height: 50px;">
-                            <i class="bi bi-cpu text-white fs-4" aria-hidden="true"></i>
+<!-- Блок: Всё оборудование -->
+<div class="mb-5">
+    <h2 class="mb-3">📊 Обзор</h2>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+            <a href="{% url 'main:equipment_list' %}" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 text-dark">
+                    <div class="card-body d-flex flex-column p-3">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-success bg-gradient rounded-3 d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                 style="width: 50px; height: 50px;">
+                                <i class="bi bi-cpu text-white fs-4" aria-hidden="true"></i>
+                            </div>
+                            <h5 class="card-title mb-0 fw-semibold">Всё оборудование</h5>
                         </div>
-                        <h5 class="card-title mb-0 fw-semibold">Всё оборудование</h5>
-                    </div>
-                    <div class="text-muted small mt-auto">
-                        <i class="bi bi-list-ul me-1" aria-hidden="true"></i>
-                        <span>Полный список</span>
-                    </div>
-                </div>
-                <div class="card-footer bg-light py-2 border-0">
-                    <small class="text-success d-flex align-items-center">
-                        <span>Перейти</span>
-                        <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
-                    </small>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <!-- По типам -->
-    {% for eq_type in equipment_types %}
-    <div class="col">
-        <a href="{% url 'main:equipment_list' %}?type={{ eq_type.id }}" class="text-decoration-none">
-            <div class="card h-100 shadow-sm border-0 text-dark">
-                <div class="card-body d-flex flex-column p-3">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-info bg-gradient rounded-3 d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                             style="width: 50px; height: 50px;">
-                            {% if "рабочая станция" in eq_type.name|lower or "pc" in eq_type.name|lower %}
-                                <i class="bi bi-display text-white fs-4" aria-hidden="true"></i>
-                            {% elif "принтер" in eq_type.name|lower %}
-                                <i class="bi bi-printer text-white fs-4" aria-hidden="true"></i>
-                            {% elif "мфу" in eq_type.name|lower %}
-                                <i class="bi bi-printer-fill text-white fs-4" aria-hidden="true"></i>
-                            {% elif "монитор" in eq_type.name|lower %}
-                                <i class="bi bi-tv text-white fs-4" aria-hidden="true"></i>
-                            {% elif "сервер" in eq_type.name|lower %}
-                                <i class="bi bi-server text-white fs-4" aria-hidden="true"></i>
-                            {% elif "ноутбук" in eq_type.name|lower %}
-                                <i class="bi bi-laptop text-white fs-4" aria-hidden="true"></i>
-                            {% else %}
-                                <i class="bi bi-device-hdd text-white fs-4" aria-hidden="true"></i>
-                            {% endif %}
+                        <div class="text-muted small mt-auto">
+                            <i class="bi bi-list-ul me-1" aria-hidden="true"></i>
+                            <span>Полный список активного и архивного оборудования</span>
                         </div>
-                        <h5 class="card-title mb-0 fw-semibold">{{ eq_type.name }}</h5>
                     </div>
-                    <div class="text-muted small mt-auto">
-                        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
-                        <span>Учёт техники</span>
+                    <div class="card-footer bg-light py-2 border-0">
+                        <small class="text-success d-flex align-items-center">
+                            <span>Перейти к списку</span>
+                            <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                        </small>
                     </div>
                 </div>
-                <div class="card-footer bg-light py-2 border-0">
-                    <small class="text-info d-flex align-items-center">
-                        <span>Посмотреть</span>
-                        <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
-                    </small>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            Типы оборудования не созданы.
+            </a>
         </div>
     </div>
-    {% endfor %}
 </div>
+
+<!-- Блок: По типам -->
+{% if equipment_types %}
+<div>
+    <h2 class="mb-3">🧩 По типам оборудования</h2>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for eq_type in equipment_types %}
+        <div class="col">
+            <a href="{% url 'main:equipment_list' %}?type={{ eq_type.id }}" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 text-dark">
+                    <div class="card-body d-flex flex-column p-3">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-info bg-gradient rounded-3 d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                 style="width: 50px; height: 50px;">
+                                {% if "рабочая станция" in eq_type.name|lower or "pc" in eq_type.name|lower or "компьютер" in eq_type.name|lower %}
+                                    <i class="bi bi-display text-white fs-4" aria-hidden="true"></i>
+                                {% elif "принтер" in eq_type.name|lower %}
+                                    <i class="bi bi-printer text-white fs-4" aria-hidden="true"></i>
+                                {% elif "мфу" in eq_type.name|lower or "многофункциональ" in eq_type.name|lower %}
+                                    <i class="bi bi-printer-fill text-white fs-4" aria-hidden="true"></i>
+                                {% elif "монитор" in eq_type.name|lower %}
+                                    <i class="bi bi-tv text-white fs-4" aria-hidden="true"></i>
+                                {% elif "сервер" in eq_type.name|lower %}
+                                    <i class="bi bi-server text-white fs-4" aria-hidden="true"></i>
+                                {% elif "ноутбук" in eq_type.name|lower or "laptop" in eq_type.name|lower %}
+                                    <i class="bi bi-laptop text-white fs-4" aria-hidden="true"></i>
+                                {% else %}
+                                    <i class="bi bi-device-hdd text-white fs-4" aria-hidden="true"></i>
+                                {% endif %}
+                            </div>
+                            <h5 class="card-title mb-0 fw-semibold">{{ eq_type.name }}</h5>
+                        </div>
+                        <div class="text-muted small mt-auto">
+                            <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+                            <span>Учёт техники</span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light py-2 border-0">
+                        <small class="text-info d-flex align-items-center">
+                            <span>Посмотреть</span>
+                            <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                        </small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning d-flex align-items-center">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Типы оборудования не созданы.
+</div>
+{% endif %}
 {% endblock %}
