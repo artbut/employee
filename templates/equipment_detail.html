@@ -4,124 +4,152 @@
 {% block title %}{{ equip.manufacturer }} {{ equip.model }}{% endblock %}
 
 {% block content %}
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'main:department_list' %}">Подразделения</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'main:equipment_list' %}">Оборудование</a></li>
-        <li class="breadcrumb-item active" aria-current="page">
-            {{ equip.manufacturer }} {{ equip.model }}
-        </li>
-    </ol>
-</nav>
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'main:department_list' %}">Подразделения</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'main:equipment_list' %}">Оборудование</a></li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ equip.manufacturer }} {{ equip.model }}
+            </li>
+        </ol>
+    </nav>
 
-<div class="row g-4">
-    <!-- Основная информация -->
-    <div class="col-lg-8">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 d-flex align-items-center">
-                    <i class="bi bi-printer me-2"></i>
-                    {{ equip.manufacturer }} {{ equip.model }}
-                </h5>
-            </div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 fw-normal text-muted">Серийный номер</dt>
-                    <dd class="col-sm-8 mb-2"><code>{{ equip.serial_number }}</code></dd>
+    <div class="row g-4">
+        <!-- Основная информация -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-printer me-2"></i>
+                        {{ equip.manufacturer }} {{ equip.model }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 fw-normal text-muted">Серийный номер</dt>
+                        <dd class="col-sm-8 mb-2"><code>{{ equip.serial_number }}</code></dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Инвентарный номер</dt>
-                    <dd class="col-sm-8 mb-2">{{ equip.inventory_number|default:"—" }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Инвентарный номер</dt>
+                        <dd class="col-sm-8 mb-2">{{ equip.inventory_number|default:"—" }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Тип оборудования</dt>
-                    <dd class="col-sm-8 mb-2">{{ equip.type.name }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Тип оборудования</dt>
+                        <dd class="col-sm-8 mb-2">{{ equip.type.name }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Производитель</dt>
-                    <dd class="col-sm-8 mb-2">{{ equip.manufacturer.name }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Производитель</dt>
+                        <dd class="col-sm-8 mb-2">{{ equip.manufacturer.name }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Год выпуска</dt>
-                    <dd class="col-sm-8 mb-2">{{ equip.year_of_release|default:"—" }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Год выпуска</dt>
+                        <dd class="col-sm-8 mb-2">{{ equip.year_of_release|default:"—" }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Гарантия до</dt>
-                    <dd class="col-sm-8 mb-2">{{ equip.warranty_until|default:"—" }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Гарантия до</dt>
+                        <dd class="col-sm-8 mb-2">{{ equip.warranty_until|default:"—" }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Сетевое имя</dt>
-                    <dd class="col-sm-8 mb-2">{{ equip.network_name|default:"—" }}</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Сетевое имя</dt>
+                        <dd class="col-sm-8 mb-2">{{ equip.network_name|default:"—" }}</dd>
 
-                    <dt class="col-sm-4 fw-normal text-muted">Статус</dt>
-                    <dd class="col-sm-8 mb-2">
-                        {% if equip.status == 'storage' %}
-                            <span class="badge bg-secondary">На складе</span>
-                        {% elif equip.status == 'assigned' %}
-                            <span class="badge bg-success">Закреплено за сотрудником</span>
-                        {% elif equip.status == 'temporary' %}
-                            <span class="badge bg-info">Выдано во временное пользование</span>
-                        {% elif equip.status == 'write_off' %}
-                            <span class="badge bg-warning">На списании</span>
-                        {% elif equip.status == 'written_off' %}
-                            <span class="badge bg-dark">Списано</span>
-                        {% elif equip.status == 'awaiting' %}
-                            <span class="badge bg-primary">Ожидает постановки на баланс</span>
+                        <dt class="col-sm-4 fw-normal text-muted">Статус</dt>
+                        <dd class="col-sm-8 mb-2">
+                            {% if equip.status == 'storage' %}
+                                <span class="badge bg-secondary">На складе</span>
+                            {% elif equip.status == 'assigned' %}
+                                <span class="badge bg-success">Закреплено за сотрудником</span>
+                            {% elif equip.status == 'temporary' %}
+                                <span class="badge bg-info">Выдано во временное пользование</span>
+                            {% elif equip.status == 'write_off' %}
+                                <span class="badge bg-warning">На списании</span>
+                            {% elif equip.status == 'written_off' %}
+                                <span class="badge bg-dark">Списано</span>
+                            {% elif equip.status == 'awaiting' %}
+                                <span class="badge bg-primary">Ожидает постановки на баланс</span>
+                            {% endif %}
+                        </dd>
+
+                        {% if equip.location %}
+                            <dt class="col-sm-4 fw-normal text-muted">Место нахождения</dt>
+                            <dd class="col-sm-8 mb-2">
+                                <span class="badge bg-primary me-1">{{ equip.location.code }}</span>
+                                {{ equip.location.address }}
+                            </dd>
                         {% endif %}
-                    </dd>
 
-                    {% if equip.location %}
-                        <dt class="col-sm-4 fw-normal text-muted">Место нахождения</dt>
-                        <dd class="col-sm-8 mb-2">
-                            <span class="badge bg-primary me-1">{{ equip.location.code }}</span>
-                            {{ equip.location.address }}
-                        </dd>
+                        {% if equip.responsible %}
+                            <dt class="col-sm-4 fw-normal text-muted">Ответственный</dt>
+                            <dd class="col-sm-8 mb-2">
+                                <a href="{% url 'main:employee_detail' equip.responsible.id %}"
+                                   class="text-decoration-none">
+                                    {{ equip.responsible.last_name }} {{ equip.responsible.first_name }}
+                                    {% if equip.responsible.second_name %}
+                                        {{ equip.responsible.second_name }}{% endif %}
+                                </a>
+                            </dd>
+                        {% endif %}
+
+                        {% if equip.comment %}
+                            <dt class="col-sm-4 fw-normal text-muted">Комментарий</dt>
+                            <dd class="col-sm-8 mb-2">{{ equip.comment }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+                <div class="card-footer bg-light d-flex justify-content-between">
+                    <a href="{% url 'main:equipment_list' %}" class="btn btn-outline-secondary">
+                        ← Назад к списку
+                    </a>
+                    <a href="{% url 'main:print_equipment_label' equip.id %}" class="btn btn-outline-primary"
+                       target="_blank">
+                        🏷 Печать этикетки
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фото и быстрые действия -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-camera me-2"></i>
+                        Фотография
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    {% if equip.photo %}
+                        <img src="{{ equip.photo.url }}"
+                             class="img-fluid rounded"
+                             alt="Фото {{ equip.manufacturer }} {{ equip.model }}"
+                             style="max-height: 250px; object-fit: contain; border: 1px solid #e9ecef;">
+                    {% else %}
+                        <div class="d-flex align-items-center justify-content-center bg-light rounded"
+                             style="height: 200px; border: 1px dashed #ccc;">
+                            <i class="bi bi-camera text-secondary" style="font-size: 3rem;"></i>
+                        </div>
+                        <p class="text-muted small mt-2">Фото не загружено</p>
                     {% endif %}
-
-                    {% if equip.responsible %}
-                        <dt class="col-sm-4 fw-normal text-muted">Ответственный</dt>
-                        <dd class="col-sm-8 mb-2">
-                            <a href="{% url 'main:employee_detail' equip.responsible.id %}" class="text-decoration-none">
-                                {{ equip.responsible.last_name }} {{ equip.responsible.first_name }}
-                                {% if equip.responsible.second_name %} {{ equip.responsible.second_name }}{% endif %}
+                </div>
+            </div>
+            <!-- Быстрые действия -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">Быстрые действия</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <a href="{% url 'main:print_equipment_label' equip.id %}"
+                               class="btn btn-sm btn-outline-primary w-100">
+                                🏷 Печать этикетки (3×9 см)
                             </a>
-                        </dd>
-                    {% endif %}
-
-                    {% if equip.comment %}
-                        <dt class="col-sm-4 fw-normal text-muted">Комментарий</dt>
-                        <dd class="col-sm-8 mb-2">{{ equip.comment }}</dd>
-                    {% endif %}
-                </dl>
-            </div>
-            <div class="card-footer bg-light d-flex justify-content-between">
-                <a href="{% url 'main:equipment_list' %}" class="btn btn-outline-secondary">
-                    ← Назад к списку
-                </a>
-                <a href="{% url 'main:print_equipment_label' equip.id %}" class="btn btn-outline-primary" target="_blank">
-                    🏷 Печать этикетки
-                </a>
+                        </li>
+                        {% if equip.responsible %}
+                            <li class="list-group-item">
+                                <a href="mailto:{{ equip.responsible.email }}"
+                                   class="btn btn-sm btn-outline-secondary w-100">
+                                    ✉️ Написать ответственному
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Быстрые действия (опционально) -->
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-success text-white">
-                <h6 class="mb-0">Быстрые действия</h6>
-            </div>
-            <div class="card-body">
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item">
-                        <a href="{% url 'main:print_equipment_label' equip.id %}" class="btn btn-sm btn-outline-primary w-100">
-                            🏷 Печать этикетки (3×9 см)
-                        </a>
-                    </li>
-                    {% if equip.responsible %}
-                    <li class="list-group-item">
-                        <a href="mailto:{{ equip.responsible.email }}" class="btn btn-sm btn-outline-secondary w-100">
-                            ✉️ Написать ответственному
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}

@@ -67,6 +67,24 @@ def validate_image_file(value):
         raise ValidationError(f'Недопустимое расширение файла: {ext}. Допустимые: {", ".join(allowed_extensions)}')
 
 
+def validate_equipment_image(value):
+    """Валидация изображения оборудования"""
+    # Размер: до 5 МБ
+    filesize = value.size
+    max_size = 5 * 1024 * 1024  # 5MB
+    if filesize > max_size:
+        raise ValidationError(f'Размер изображения не должен превышать 5 МБ. Текущий: {filesize / 1024 / 1024:.1f} МБ.')
+
+    # Расширения
+    ext = os.path.splitext(value.name)[1].lower()
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.webp']
+    if ext not in allowed_extensions:
+        raise ValidationError(
+            f'Недопустимый формат изображения: {ext}. '
+            f'Разрешены: {", ".join(allowed_extensions)}'
+        )
+
+
 def validate_login(value):
     """Валидатор для логина в формате 0000-00-000 (всего 11 символов)"""
     if not re.match(r'^\d{4}-\d{2}-\d{3}$', value):
@@ -455,6 +473,15 @@ class Equipment(models.Model):
         null=True,
         help_text='Имя в сети (например, PC-001)',
         unique=True  # ← часто требуется уникальность
+    )
+
+    photo = models.ImageField(
+        upload_to='equipment/photos/%Y/%m/%d/',
+        verbose_name='Фотография',
+        blank=True,
+        null=True,
+        validators=[validate_equipment_image],
+        help_text='Фото оборудования (до 5 МБ, форматы: JPG, PNG, WebP)'
     )
 
     location = models.ForeignKey(

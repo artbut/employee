@@ -211,10 +211,10 @@ class EquipmentAdmin(admin.ModelAdmin):
         'model', 'serial_number', 'inventory_number',
         'network_name', 'comment'
     )
-    readonly_fields = ('created', 'updated')
+    readonly_fields = ('created', 'updated', 'photo_preview')  # ← добавлено photo_preview
     fieldsets = (
         ('Общее', {
-            'fields': ('type', 'manufacturer', 'model', 'serial_number', 'inventory_number')
+            'fields': ('type', 'manufacturer', 'model', 'serial_number', 'inventory_number', 'photo')  # ← добавлено photo
         }),
         ('Гарантия и дата', {
             'fields': ('year_of_release', 'warranty_until')
@@ -227,6 +227,15 @@ class EquipmentAdmin(admin.ModelAdmin):
         }),
     )
     autocomplete_fields = ('responsible', 'location')
+
+    def photo_preview(self, obj):
+        if obj.photo:
+            return mark_safe(
+                f'<img src="{obj.photo.url}" '
+                f'style="max-width: 300px; max-height: 300px; border: 1px solid #ddd; border-radius: 4px;">'
+            )
+        return "Нет фотографии"
+    photo_preview.short_description = "Фотография оборудования"
 
 
 @admin.register(DocumentType)
