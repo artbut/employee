@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Linux команды{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-filter"></i> Фильтры
+            </div>
+            <div class="card-body">
+                <form method="get">
+                    <div class="mb-3">
+                        <label class="form-label">Категория</label>
+                        <select name="category" class="form-select">
+                            <option value="">Все категории</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сложность</label>
+                        <select name="difficulty" class="form-select">
+                            <option value="">Любая</option>
+                            {% for value, name in difficulties %}
+                            <option value="{{ value }}" {% if request.GET.difficulty == value %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сортировка</label>
+                        <select name="sort" class="form-select">
+                            <option value="order" {% if request.GET.sort == 'order' %}selected{% endif %}>По порядку</option>
+                            <option value="popular" {% if request.GET.sort == 'popular' %}selected{% endif %}>По популярности</option>
+                            <option value="new" {% if request.GET.sort == 'new' %}selected{% endif %}>Сначала новые</option>
+                            <option value="favorite" {% if request.GET.sort == 'favorite' %}selected{% endif %}>Только избранные</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Применить
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-search"></i> Быстрый поиск
+            </div>
+            <div class="card-body">
+                <form action="{% url 'main:linux_search' %}" method="get">
+                    <div class="input-group">
+                        <input type="text" name="q" class="form-control" placeholder="Поиск команд...">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <h2><i class="fas fa-code"></i> Linux команды</h2>
+
+        {% for command in commands %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="card-title mb-1">
+                            <code class="fs-5">{{ command.command }}</code>
+                            <span class="badge bg-secondary ms-2">
+                                <i class="fas {{ command.category.icon|default:'fa-folder' }}"></i>
+                                {{ command.category.name }}
+                            </span>
+                        </h5>
+                        <p class="card-text text-muted mb-2">{{ command.description }}</p>
+
+                        <div class="mb-2">
+                            <span class="badge {% if command.difficulty == 'beginner' %}bg-success{% elif command.difficulty == 'intermediate' %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ command.get_difficulty_display }}
+                            </span>
+                            {% if command.is_favorite %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-star"></i> Избранное
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <a href="{% url 'main:linux_command_detail' command.id %}" class="btn btn-sm btn-outline-primary">
+                        Подробнее <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Команды не найдены. Попробуйте изменить фильтры.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

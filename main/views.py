@@ -1,5 +1,5 @@
 from django.core.paginator import Paginator
-from .models import Employee, Department, Equipment, EquipmentType
+from .models import Employee, Department, Equipment, EquipmentType, LinuxCategory, LinuxCommand, LinuxCheatsheet
 from django.db.models import Q, Count
 from .utils import apply_employee_filters_and_ordering
 from django.http import HttpResponse
@@ -204,3 +204,118 @@ def print_equipment_label(request, id):
         'barcode_data': barcode_data,
     }
     return render(request, 'labels/equipment_label.html', context)
+
+
+def linux_home(request):
+    """Домашняя страница Linux шпаргалки"""
+    categories = LinuxCategory.objects.prefetch_related('commands').all()
+    popular_commands = LinuxCommand.objects.filter(is_favorite=True)[:10]
+    recent_cheatsheets = LinuxCheatsheet.objects.filter(is_published=True)[:5]
+
+    return render(request, 'linux_home.html', {
+        'categories': categories,
+        'popular_commands': popular_commands,
+        'recent_cheatsheets': recent_cheatsheets,
+    })
+
+
+def linux_commands(request):
+    """Список всех Linux команд"""
+    commands = LinuxCommand.objects.select_related('category').all()
+
+    # Фильтрация
+    category_id = request.GET.get('category')
+    if category_id:
+        commands = commands.filter(category_id=category_id)
+
+    difficulty = request.GET.get('difficulty')
+    if difficulty:
+        commands = commands.filter(difficulty=difficulty)
+
+    search = request.GET.get('search')
+    if search:
+        commands = commands.filter(
+            Q(command__icontains=search) |
+            Q(description__icontains=search) |
+            Q(tags__icontains=search)
+        )
+
+    # Сортировка
+    sort = request.GET.get('sort', 'order')
+    if sort == 'popular':
+        commands = commands.order_by('-views')
+    elif sort == 'new':
+        commands = commands.order_by('-created')
+    elif sort == 'favorite':
+        commands = commands.filter(is_favorite=True).order_by('order')
+    else:
+        commands = commands.order_by('order', 'command')
+
+    categories = LinuxCategory.objects.all()
+
+    return render(request, 'linux_commands.html', {
+        'commands': commands,
+        'categories': categories,
+        'difficulties': LinuxCommand.DIFFICULTY_CHOICES,
+    })
+
+
+def linux_command_detail(request, command_id):
+    """Детальная информация о команде"""
+    command = get_object_or_404(LinuxCommand, id=command_id)
+    command.views += 1
+    command.save(update_fields=['views'])
+
+    similar_commands = LinuxCommand.objects.filter(
+        category=command.category
+    ).exclude(id=command_id).order_by('?')[:5]
+
+    return render(request, 'linux_command_detail.html', {
+        'command': command,
+        'similar_commands': similar_commands,
+    })
+
+
+def linux_cheatsheets(request):
+    """Список готовых шпаргалок"""
+    cheatsheets = LinuxCheatsheet.objects.filter(is_published=True)
+
+    category_id = request.GET.get('category')
+    if category_id:
+        cheatsheets = cheatsheets.filter(categories__id=category_id)
+
+    return render(request, 'linux_cheatsheets.html', {
+        'cheatsheets': cheatsheets,
+        'categories': LinuxCategory.objects.all(),
+    })
+
+
+def linux_search(request):
+    """Поиск Linux команд"""
+    query = request.GET.get('q', '')
+    commands = []
+
+    if query:
+        commands = LinuxCommand.objects.filter(
+            Q(command__icontains=query) |
+            Q(description__icontains=query) |
+            Q(tags__icontains=query)
+        ).select_related('category')[:50]
+
+    return render(request, 'linux_search.html', {
+        'commands': commands,
+        'query': query,
+    })
+
+
+def linux_quick_reference(request):
+    """Быстрая справка по основным командам"""
+    basic_commands = LinuxCommand.objects.filter(difficulty='beginner')[:20]
+    intermediate_commands = LinuxCommand.objects.filter(difficulty='intermediate')[:15]
+    advanced_commands = LinuxCommand.objects.filter(difficulty='advanced')[:10]
+
+    return render(request, 'linux_quick_reference.html', {
+        'basic_commands': basic_commands,
+        'intermediate_commands': intermediate_commands,
+        'advanced_commands': advanced_commands,
+    })

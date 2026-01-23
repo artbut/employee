@@ -13,4 +13,10 @@ urlpatterns = [
     path('equipment/<uuid:id>/', views.equipment_detail, name='equipment_detail'),
     path('equipment/<uuid:id>/label/', views.print_equipment_label, name='print_equipment_label'),
     path('equipment/', views.equipment_main, name='equipment_main'),
+    path('linux/', views.linux_home, name='linux_home'),
+    path('linux/commands/', views.linux_commands, name='linux_commands'),
+    path('linux/commands/<uuid:command_id>/', views.linux_command_detail, name='linux_command_detail'),
+    path('linux/cheatsheets/', views.linux_cheatsheets, name='linux_cheatsheets'),
+    path('linux/search/', views.linux_search, name='linux_search'),
+    path('linux/quick-reference/', views.linux_quick_reference, name='linux_quick_reference'),
 ]

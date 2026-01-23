@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Готовые шпаргалки Linux{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-filter"></i> Категории шпаргалок
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{% url 'main:linux_cheatsheets' %}" class="list-group-item list-group-item-action {% if not request.GET.category %}active{% endif %}">
+                        <i class="fas fa-globe"></i> Все шпаргалки
+                    </a>
+                    {% for category in categories %}
+                    <a href="{% url 'main:linux_cheatsheets' %}?category={{ category.id }}"
+                       class="list-group-item list-group-item-action {% if request.GET.category == category.id|stringformat:'s' %}active{% endif %}">
+                        <i class="fas {{ category.icon|default:'fa-folder' }}"></i> {{ category.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-download"></i> Форматы
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-danger">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-file-word"></i> DOCX
+                    </button>
+                    <button class="btn btn-outline-success">
+                        <i class="fas fa-file-excel"></i> XLSX
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-file-alt"></i> Готовые шпаргалки Linux</h1>
+            <div class="btn-group">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download"></i> Скачать все
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf text-danger"></i> PDF формат</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-word text-primary"></i> Word формат</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel text-success"></i> Excel формат</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Здесь собраны готовые шпаргалки по Linux командам, которые можно скачать и использовать в работе.
+        </div>
+
+        <div class="row">
+            {% for cheatsheet in cheatsheets %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ cheatsheet.title }}</h5>
+                        <span class="badge bg-success">
+                            <i class="fas fa-eye"></i> {{ cheatsheet.views }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ cheatsheet.description|default:"Шпаргалка по Linux командам" }}</p>
+
+                        <div class="mb-3">
+                            <strong>Категории:</strong>
+                            <div class="mt-1">
+                                {% for category in cheatsheet.categories.all %}
+                                <span class="badge bg-secondary me-1 mb-1">
+                                    <i class="fas {{ category.icon|default:'fa-folder' }}"></i> {{ category.name }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <strong>Команд:</strong>
+                            <span class="badge bg-info">{{ cheatsheet.commands.count }}</span>
+                        </div>
+
+                        <div class="small text-muted">
+                            <i class="fas fa-calendar"></i> Создано: {{ cheatsheet.created|date:"d.m.Y" }}
+                            <i class="fas fa-download ms-3"></i> Скачиваний: {{ cheatsheet.download_count }}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <button class="btn btn-danger">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-print"></i> Печать
+                            </button>
+                            <button class="btn btn-success" onclick="incrementDownload({{ cheatsheet.id }})">
+                                <i class="fas fa-download"></i> Скачать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-warning text-center py-5">
+                    <i class="fas fa-file-exclamation fa-3x text-warning mb-3"></i>
+                    <h4>Шпаргалки не найдены</h4>
+                    <p class="mb-0">В данный момент нет готовых шпаргалок. Они скоро появятся!</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Создать свою шпаргалку</h5>
+            </div>
+            <div class="card-body">
+                <p>Хотите создать свою собственную шпаргалку? Следуйте этим шагам:</p>
+                <ol>
+                    <li>Выберите нужные категории команд</li>
+                    <li>Отфильтруйте команды по сложности</li>
+                    <li>Добавьте свои заметки и примеры</li>
+                    <li>Экспортируйте в нужный формат</li>
+                </ol>
+                <a href="{% url 'linux_commands' %}" class="btn btn-warning">
+                    <i class="fas fa-magic"></i> Начать создание
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function incrementDownload(cheatsheetId) {
+    // Здесь можно добавить логику для увеличения счетчика скачиваний
+    alert('Функция скачивания в разработке. ID шпаргалки: ' + cheatsheetId);
+}
+</script>
+{% endblock %}
