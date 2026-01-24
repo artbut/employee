@@ -39,7 +39,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <a href="{% url 'linux_commands' %}?difficulty=beginner" class="btn btn-sm btn-success w-100">
+                        <a href="{% url 'main:linux_commands' %}?difficulty=beginner" class="btn btn-sm btn-success w-100">
                             <i class="fas fa-list"></i> Все команды для новичков
                         </a>
                     </div>
@@ -70,7 +70,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <a href="{% url 'linux_commands' %}?difficulty=intermediate" class="btn btn-sm btn-warning w-100">
+                        <a href="{% url 'main:linux_commands' %}?difficulty=intermediate" class="btn btn-sm btn-warning w-100">
                             <i class="fas fa-list"></i> Все команды среднего уровня
                         </a>
                     </div>
@@ -101,7 +101,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <a href="{% url 'linux_commands' %}?difficulty=advanced" class="btn btn-sm btn-danger w-100">
+                        <a href="{% url 'main:linux_commands' %}?difficulty=advanced" class="btn btn-sm btn-danger w-100">
                             <i class="fas fa-list"></i> Все продвинутые команды
                         </a>
                     </div>
@@ -135,7 +135,7 @@
                                 </div>
                                 {% if category.commands.count > 6 %}
                                 <div class="text-center mt-3">
-                                    <a href="{% url 'linux_commands' %}?category={{ category.id }}" class="btn btn-sm btn-outline-info">
+                                    <a href="{% url 'main:linux_commands' %}?category={{ category.id }}" class="btn btn-sm btn-outline-info">
                                         Показать все {{ category.commands.count }} команд
                                     </a>
                                 </div>

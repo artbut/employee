@@ -127,7 +127,6 @@ class EmployeeHistoryInline(admin.TabularInline):
         return qs.select_related('department', 'position', 'location')
 
 
-# Обновите EmployeeAdmin: добавьте inline
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('post_photo','last_name', 'first_name', 'second_name', 'login', 'department', 'position', 'organization', 'kabinet', 'phone', 'location_code', 'available', 'created')

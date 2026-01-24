@@ -811,6 +811,35 @@ class LinuxCommand(models.Model):
             return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
         return []
 
+    def get_options_dict(self):
+        """Возвращает список словарей с разделенными опциями"""
+        result = []
+        if self.options:
+            for opt in self.options.split('\n'):
+                opt = opt.strip()
+                if not opt:
+                    continue
+
+                # Ищем первый пробел или табуляцию для разделения
+                if ' ' in opt:
+                    parts = opt.split(' ', 1)
+                    result.append({
+                        'option': parts[0].strip(),
+                        'description': parts[1].strip()
+                    })
+                elif '\t' in opt:
+                    parts = opt.split('\t', 1)
+                    result.append({
+                        'option': parts[0].strip(),
+                        'description': parts[1].strip()
+                    })
+                else:
+                    result.append({
+                        'option': opt,
+                        'description': 'Опция команды'
+                    })
+        return result
+
 
 class LinuxCheatsheet(models.Model):
     """Готовые шпаргалки по Linux"""

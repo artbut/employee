@@ -5,110 +5,291 @@
 {% block content %}
 <div class="row">
     <div class="col-md-3">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-filter"></i> Фильтры
+        <div class="sticky-top" style="top: 20px;">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-filter"></i> Фильтры
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filterForm">
+                        <input type="hidden" name="page" value="1">
+
+                        <div class="mb-3">
+                            <label class="form-label">Категория</label>
+                            <select name="category" class="form-select">
+                                <option value="">Все категории</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}"
+                                        {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Сложность</label>
+                            <select name="difficulty" class="form-select">
+                                <option value="">Любая</option>
+                                {% for value, name in difficulties %}
+                                <option value="{{ value }}"
+                                        {% if request.GET.difficulty == value %}selected{% endif %}>
+                                    {{ name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Сортировка</label>
+                            <select name="sort" class="form-select">
+                                <option value="order" {% if request.GET.sort == 'order' %}selected{% endif %}>По порядку</option>
+                                <option value="popular" {% if request.GET.sort == 'popular' %}selected{% endif %}>По популярности</option>
+                                <option value="new" {% if request.GET.sort == 'new' %}selected{% endif %}>Сначала новые</option>
+                                <option value="favorite" {% if request.GET.sort == 'favorite' %}selected{% endif %}>Только избранные</option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Применить
+                            </button>
+                            <a href="{% url 'main:linux_commands' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Сбросить
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="get">
-                    <div class="mb-3">
-                        <label class="form-label">Категория</label>
-                        <select name="category" class="form-select">
-                            <option value="">Все категории</option>
-                            {% for category in categories %}
-                            <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
-                                {{ category.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Сложность</label>
-                        <select name="difficulty" class="form-select">
-                            <option value="">Любая</option>
-                            {% for value, name in difficulties %}
-                            <option value="{{ value }}" {% if request.GET.difficulty == value %}selected{% endif %}>
-                                {{ name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Сортировка</label>
-                        <select name="sort" class="form-select">
-                            <option value="order" {% if request.GET.sort == 'order' %}selected{% endif %}>По порядку</option>
-                            <option value="popular" {% if request.GET.sort == 'popular' %}selected{% endif %}>По популярности</option>
-                            <option value="new" {% if request.GET.sort == 'new' %}selected{% endif %}>Сначала новые</option>
-                            <option value="favorite" {% if request.GET.sort == 'favorite' %}selected{% endif %}>Только избранные</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter"></i> Применить
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-search"></i> Быстрый поиск
-            </div>
-            <div class="card-body">
-                <form action="{% url 'main:linux_search' %}" method="get">
-                    <div class="input-group">
-                        <input type="text" name="q" class="form-control" placeholder="Поиск команд...">
-                        <button class="btn btn-outline-secondary" type="submit">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                </form>
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-info-circle"></i> Статистика
+                </div>
+                <div class="card-body">
+                    <p class="small">
+                        <i class="fas fa-code text-primary"></i>
+                        <strong>{{ total_commands }}</strong> команд всего
+                    </p>
+                    <p class="small">
+                        <i class="fas fa-file-alt text-success"></i>
+                        <strong>{{ commands.paginator.count }}</strong> найдено
+                    </p>
+                    <p class="small">
+                        <i class="fas fa-copy text-warning"></i>
+                        <strong>{{ commands.paginator.num_pages }}</strong> страниц
+                    </p>
+                    {% if request.GET.category %}
+                    {% with category_id=request.GET.category %}
+                        {% for category in categories %}
+                            {% if category.id|stringformat:"s" == category_id %}
+                            <p class="small">
+                                <i class="fas {{ category.icon }}"></i>
+                                Категория: {{ category.name }}
+                            </p>
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-md-9">
-        <h2><i class="fas fa-code"></i> Linux команды</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-code"></i> Linux команды</h1>
+            <div>
+                <a href="{% url 'main:linux_quick_reference' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-bolt"></i> Быстрая справка
+                </a>
+                <a href="{% url 'main:linux_search' %}" class="btn btn-outline-success">
+                    <i class="fas fa-search"></i> Поиск
+                </a>
+            </div>
+        </div>
 
-        {% for command in commands %}
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h5 class="card-title mb-1">
-                            <code class="fs-5">{{ command.command }}</code>
-                            <span class="badge bg-secondary ms-2">
+        <!-- Информация о фильтрах -->
+        {% if request.GET %}
+        <div class="alert alert-info mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-filter"></i>
+                    Активные фильтры:
+                    {% if request.GET.category %}
+                    {% with category_id=request.GET.category %}
+                        {% for category in categories %}
+                            {% if category.id|stringformat:"s" == category_id %}
+                            <span class="badge bg-primary ms-2">
+                                <i class="fas {{ category.icon }}"></i> {{ category.name }}
+                            </span>
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                    {% endif %}
+
+                    {% if request.GET.difficulty %}
+                    <span class="badge bg-warning ms-2">
+                        Сложность: {{ request.GET.difficulty }}
+                    </span>
+                    {% endif %}
+
+                    {% if request.GET.sort and request.GET.sort != 'order' %}
+                    <span class="badge bg-success ms-2">
+                        Сортировка: {{ request.GET.sort }}
+                    </span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'main:linux_commands' %}" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-times"></i> Очистить
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if commands %}
+        <div class="row">
+            {% for command in commands %}
+            <div class="col-md-6 mb-4">
+                <div class="card command-card h-100">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <code class="fs-5">{{ command.command }}</code>
+                            </h5>
+                            <span class="badge bg-secondary">
                                 <i class="fas {{ command.category.icon|default:'fa-folder' }}"></i>
-                                {{ command.category.name }}
                             </span>
-                        </h5>
-                        <p class="card-text text-muted mb-2">{{ command.description }}</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ command.description }}</p>
 
-                        <div class="mb-2">
-                            <span class="badge {% if command.difficulty == 'beginner' %}bg-success{% elif command.difficulty == 'intermediate' %}bg-warning{% else %}bg-danger{% endif %}">
-                                {{ command.get_difficulty_display }}
-                            </span>
-                            {% if command.is_favorite %}
-                            <span class="badge bg-warning">
-                                <i class="fas fa-star"></i> Избранное
-                            </span>
+                        <div class="mb-3">
+                            <strong>Использование:</strong>
+                            <pre class="mb-0"><code>{{ command.usage }}</code></pre>
+                        </div>
+
+                        <div class="mb-3">
+                            {% if command.get_options_list %}
+                            <strong>Основные опции:</strong>
+                            <ul class="mb-0">
+                                {% for option in command.get_options_list|slice:":3" %}
+                                <li><code>{{ option|truncatechars:50 }}</code></li>
+                                {% endfor %}
+                            </ul>
                             {% endif %}
                         </div>
                     </div>
-
-                    <a href="{% url 'main:linux_command_detail' command.id %}" class="btn btn-sm btn-outline-primary">
-                        Подробнее <i class="fas fa-arrow-right"></i>
-                    </a>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-{{ command.difficulty }}">
+                                    {{ command.get_difficulty_display }}
+                                </span>
+                                {% if command.is_favorite %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                {% endif %}
+                                <span class="text-muted small ms-2">
+                                    <i class="fas fa-eye"></i> {{ command.views }}
+                                </span>
+                            </div>
+                            <a href="{% url 'main:linux_command_detail' command.id %}" class="btn btn-sm btn-primary">
+                                Подробнее <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% empty %}
+
+        <!-- Пагинация -->
+        {% if commands.paginator.num_pages > 1 %}
+        <nav aria-label="Навигация по страницам" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <!-- Кнопка "Назад" -->
+                {% if commands.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ commands.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}">
+                        <i class="fas fa-chevron-left"></i> Назад
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">
+                        <i class="fas fa-chevron-left"></i> Назад
+                    </span>
+                </li>
+                {% endif %}
+
+                <!-- Номера страниц -->
+                {% for num in commands.paginator.page_range %}
+                    {% if num == commands.number %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > commands.number|add:'-3' and num < commands.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if query_params %}&{{ query_params }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Кнопка "Вперед" -->
+                {% if commands.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ commands.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}">
+                        Вперед <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">
+                        Вперед <i class="fas fa-chevron-right"></i>
+                    </span>
+                </li>
+                {% endif %}
+            </ul>
+
+            <!-- Информация о странице -->
+            <div class="text-center text-muted small mt-2">
+                Страница {{ commands.number }} из {{ commands.paginator.num_pages }}
+                | Показано {{ commands.start_index }}–{{ commands.end_index }} из {{ commands.paginator.count }} команд
+            </div>
+        </nav>
+        {% endif %}
+
+        {% else %}
         <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> Команды не найдены. Попробуйте изменить фильтры.
+            <div class="text-center py-4">
+                <i class="fas fa-search fa-3x text-info mb-3"></i>
+                <h4>Команды не найдены</h4>
+                <p>Попробуйте изменить фильтры или воспользуйтесь поиском</p>
+                <a href="{% url 'main:linux_commands' %}" class="btn btn-primary">
+                    <i class="fas fa-times"></i> Сбросить фильтры
+                </a>
+            </div>
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
 </div>
+
+<script>
+// Автоматическая отправка формы при изменении фильтров
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('filterForm');
+    const selects = filterForm.querySelectorAll('select');
+
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            // Сбрасываем страницу на 1 при изменении фильтров
+            filterForm.querySelector('input[name="page"]').value = '1';
+            filterForm.submit();
+        });
+    });
+});
+</script>
 {% endblock %}

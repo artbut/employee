@@ -1,4 +1,4 @@
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Employee, Department, Equipment, EquipmentType, LinuxCategory, LinuxCommand, LinuxCheatsheet
 from django.db.models import Q, Count
 from .utils import apply_employee_filters_and_ordering
@@ -218,9 +218,8 @@ def linux_home(request):
         'recent_cheatsheets': recent_cheatsheets,
     })
 
-
 def linux_commands(request):
-    """Список всех Linux команд"""
+    """Список всех Linux команд с пагинацией"""
     commands = LinuxCommand.objects.select_related('category').all()
 
     # Фильтрация
@@ -251,12 +250,31 @@ def linux_commands(request):
     else:
         commands = commands.order_by('order', 'command')
 
+    # Пагинация
+    page = request.GET.get('page', 1)
+    paginator = Paginator(commands, 20)  # 20 команд на страницу
+
+    try:
+        commands_page = paginator.page(page)
+    except PageNotAnInteger:
+        commands_page = paginator.page(1)
+    except EmptyPage:
+        commands_page = paginator.page(paginator.num_pages)
+
     categories = LinuxCategory.objects.all()
 
+    # Сохраняем параметры фильтрации для пагинации
+    query_params = request.GET.copy()
+    if 'page' in query_params:
+        del query_params['page']
+
     return render(request, 'linux_commands.html', {
-        'commands': commands,
+        'commands': commands_page,
         'categories': categories,
         'difficulties': LinuxCommand.DIFFICULTY_CHOICES,
+        'query_params': query_params.urlencode(),
+        'total_commands': commands.count(),
+        'current_sort': sort,
     })
 
 
