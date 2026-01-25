@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-
+from django.core.files.storage import FileSystemStorage
 
 # ======================
 # КОНСТАНТЫ ДЛЯ ФАЙЛОВ
@@ -840,6 +840,7 @@ class LinuxCommand(models.Model):
                     })
         return result
 
+cheatsheet_storage = FileSystemStorage(location='cheatsheets/')
 
 class LinuxCheatsheet(models.Model):
     """Готовые шпаргалки по Linux"""
@@ -852,6 +853,44 @@ class LinuxCheatsheet(models.Model):
     is_published = models.BooleanField(default=True, verbose_name='Опубликовано')
     views = models.PositiveIntegerField(default=0, verbose_name='Просмотры')
     download_count = models.PositiveIntegerField(default=0, verbose_name='Скачиваний')
+    FORMAT_CHOICES = [
+        ('pdf', 'PDF'),
+        ('txt', 'Text'),
+        ('md', 'Markdown'),
+        ('html', 'HTML'),
+    ]
+
+    file_pdf = models.FileField(
+        upload_to='cheatsheets/pdf/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='PDF файл'
+    )
+
+    file_txt = models.FileField(
+        upload_to='cheatsheets/txt/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='Text файл'
+    )
+
+    file_md = models.FileField(
+        upload_to='cheatsheets/md/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='Markdown файл'
+    )
+
+    file_html = models.FileField(
+        upload_to='cheatsheets/html/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='HTML файл'
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -860,6 +899,19 @@ class LinuxCheatsheet(models.Model):
         verbose_name = 'Шпаргалка Linux'
         verbose_name_plural = 'Шпаргалки Linux'
         ordering = ['-created']
+
+
+    def get_file_url(self, format_type):
+        """Получить URL файла по формату"""
+        file_field = getattr(self, f'file_{format_type}', None)
+        if file_field:
+            return file_field.url
+        return None
+
+    def has_file(self, format_type):
+        """Проверить наличие файла формата"""
+        file_field = getattr(self, f'file_{format_type}', None)
+        return bool(file_field and file_field.name)
 
     def __str__(self):
         return self.title

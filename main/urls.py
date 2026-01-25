@@ -19,4 +19,11 @@ urlpatterns = [
     path('linux/cheatsheets/', views.linux_cheatsheets, name='linux_cheatsheets'),
     path('linux/search/', views.linux_search, name='linux_search'),
     path('linux/quick-reference/', views.linux_quick_reference, name='linux_quick_reference'),
+    path('linux/cheatsheets/', views.linux_cheatsheets, name='linux_cheatsheets'),
+    path('linux/cheatsheets/<uuid:cheatsheet_id>/', views.print_cheatsheet, name='print_cheatsheet'),
+    path('linux/cheatsheets/<uuid:cheatsheet_id>/download/<str:format_type>/',
+         views.download_cheatsheet, name='download_cheatsheet'),
+    path('linux/cheatsheets/<uuid:cheatsheet_id>/download/',
+         views.download_cheatsheet, {'format_type': 'pdf'}, name='download_cheatsheet_default'),
+    path('linux/cheatsheets/generate/', views.generate_custom_cheatsheet, name='generate_cheatsheet'),
 ]
