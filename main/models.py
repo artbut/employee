@@ -1,56 +1,31 @@
-import os
-import re
-import uuid
-from typing import Set
+import os, re, uuid
 from django.db import models
 from django.db.models import Q, F
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.utils import timezone
+
+def get_employee_document_path(instance, filename):
+    """Путь: documents/employee_id/YYYY/MM/DD/filename"""
+    ext = os.path.splitext(filename)[1].lower()
+    safe_filename = f"{uuid.uuid4().hex}{ext}"
+    from django.utils import timezone
+    now = timezone.now()
+    return f"documents/{instance.employee.id}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
 
 
-# ======================
-# КОНСТАНТЫ ДЛЯ ФАЙЛОВ
-# ======================
+def validate_document_file(value):
+    """Валидация загружаемого документа"""
+    # 1. Размер
+    max_size = 10 * 1024 * 1024  # 10 МБ
+    if value.size > max_size:
+        raise ValidationError(f'Размер файла не должен превышать 10 МБ. Текущий: {value.size / 1024 / 1024:.1f} МБ.')
 
-FILE_EXTENSIONS = {
-    'images': {'.jpg', '.jpeg', '.png', '.gif', '.webp'},
-    'equipment_images': {'.jpg', '.jpeg', '.png', '.webp'},
-    'documents': {
+    # 2. Расширения (только безопасные)
+    allowed_extensions = {
         '.pdf', '.doc', '.docx', '.xls', '.xlsx',
         '.jpg', '.jpeg', '.png', '.zip', '.rar'
-    },
-}
-
-FILE_SIZE_LIMITS = {
-    'employee_photo': 2,  # MB
-    'equipment_photo': 5,  # MB
-    'document': 10,  # MB
-}
-
-UPLOAD_PATHS = {
-    'employee_photos': 'employee/photos',
-    'equipment_photos': 'equipment/photos',
-    'employee_documents': 'documents',
-}
-
-
-# ======================
-# УНИВЕРСАЛЬНЫЕ ВАЛИДАТОРЫ И ПУТИ
-# ======================
-
-def validate_file(value, max_size_mb: int, allowed_extensions: Set[str], allow_multiple_dots: bool = False):
-    """Универсальный валидатор для файлов и изображений."""
-    # Размер
-    max_size_bytes = max_size_mb * 1024 * 1024
-    if value.size > max_size_bytes:
-        raise ValidationError(
-            f'Размер файла не должен превышать {max_size_mb} МБ. '
-            f'Текущий: {value.size / 1024 / 1024:.1f} МБ.'
-        )
-
-    # Расширение
+    }
     ext = os.path.splitext(value.name)[1].lower()
     if ext not in allowed_extensions:
         raise ValidationError(
@@ -58,108 +33,73 @@ def validate_file(value, max_size_mb: int, allowed_extensions: Set[str], allow_m
             f'Разрешены: {", ".join(sorted(allowed_extensions))}'
         )
 
-    # Защита от двойного расширения
-    if not allow_multiple_dots and value.name.count('.') > 1:
-        raise ValidationError('Подозрительное имя файла. Разрешено только одно расширение.')
+    # 3. Защита от двойного расширения (например, .pdf.exe)
+    base_name = os.path.basename(value.name)
+    if base_name.count('.') > 1:
+        # Разрешаем только один дополнительный символ (например, "file.tar.gz")
+        parts = base_name.split('.')
+        if len(parts) > 3 or (len(parts) == 3 and parts[-1] not in {'gz', 'bz2'}):
+            raise ValidationError('Подозрительное имя файла. Убедитесь, что расширение корректно.')
+
+
+
+def get_employee_image_path(instance, filename):
+    """Генерация пути с датой и UUID, чтобы избежать конфликтов имён файлов"""
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    # Используем текущее время, если объект ещё не сохранён
+    from django.utils import timezone
+    created = instance.created or timezone.now()
+    return f"employee/{created.strftime('%Y/%m/%d')}/{filename}"
 
 
 def validate_image_file(value):
-    """Валидация фото сотрудника (2 МБ, изображения)"""
-    return validate_file(
-        value,
-        max_size_mb=FILE_SIZE_LIMITS['employee_photo'],
-        allowed_extensions=FILE_EXTENSIONS['images']
-    )
+    # Проверка размера
+    filesize = value.size
+    max_size = 2 * 1024 * 1024  # 2MB
+    if filesize > max_size:
+        raise ValidationError(f'Размер файла не должен превышать 2 МБ. Текущий размер: {filesize / 1024 / 1024:.1f} МБ.')
+
+    # Проверка расширения
+    ext = os.path.splitext(value.name)[1].lower()
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    if ext not in allowed_extensions:
+        raise ValidationError(f'Недопустимое расширение файла: {ext}. Допустимые: {", ".join(allowed_extensions)}')
 
 
 def validate_equipment_image(value):
-    """Валидация фото оборудования (5 МБ, изображения)"""
-    return validate_file(
-        value,
-        max_size_mb=FILE_SIZE_LIMITS['equipment_photo'],
-        allowed_extensions=FILE_EXTENSIONS['equipment_images']
-    )
+    """Валидация изображения оборудования"""
+    # Размер: до 5 МБ
+    filesize = value.size
+    max_size = 5 * 1024 * 1024  # 5MB
+    if filesize > max_size:
+        raise ValidationError(f'Размер изображения не должен превышать 5 МБ. Текущий: {filesize / 1024 / 1024:.1f} МБ.')
 
-
-def validate_document_file(value):
-    """Валидация документов (10 МБ, офисные форматы + архивы)"""
-    return validate_file(
-        value,
-        max_size_mb=FILE_SIZE_LIMITS['document'],
-        allowed_extensions=FILE_EXTENSIONS['documents'],
-        allow_multiple_dots=True
-    )
-
-
-# Функции для генерации путей
-def employee_photo_upload_path(instance, filename):
-    """Путь для фото сотрудника: employee/photos/YYYY/MM/DD/<uuid>.ext"""
-    ext = os.path.splitext(filename)[1].lower()
-    safe_filename = f"{uuid.uuid4().hex}{ext}"
-    now = timezone.now()
-    return f"{UPLOAD_PATHS['employee_photos']}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
-
-
-def equipment_photo_upload_path(instance, filename):
-    """Путь для фото оборудования: equipment/photos/YYYY/MM/DD/<uuid>.ext"""
-    ext = os.path.splitext(filename)[1].lower()
-    safe_filename = f"{uuid.uuid4().hex}{ext}"
-    now = timezone.now()
-    return f"{UPLOAD_PATHS['equipment_photos']}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
-
-
-def generate_employee_document_path(instance, filename):
-    """Путь: documents/<employee_id>/YYYY/MM/DD/<uuid>.ext"""
-    ext = os.path.splitext(filename)[1].lower()
-    safe_filename = f"{uuid.uuid4().hex}{ext}"
-    now = timezone.now()
-    return f"{UPLOAD_PATHS['employee_documents']}/{instance.employee.id}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
-
-
-# ======================
-# ВАЛИДАТОРЫ ДЛЯ СПЕЦИФИЧНЫХ ПОЛЕЙ
-# ======================
-
-def validate_pattern(value, pattern: str, error_message: str, example: str = None):
-    """Универсальный валидатор для проверки по регулярному выражению"""
-    if not re.match(pattern, value):
-        msg = error_message
-        if example:
-            msg += f', например: {example}'
-        raise ValidationError(msg)
+    # Расширения
+    ext = os.path.splitext(value.name)[1].lower()
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.webp']
+    if ext not in allowed_extensions:
+        raise ValidationError(
+            f'Недопустимый формат изображения: {ext}. '
+            f'Разрешены: {", ".join(allowed_extensions)}'
+        )
 
 
 def validate_login(value):
     """Валидатор для логина в формате 0000-00-000 (всего 11 символов)"""
-    validate_pattern(
-        value,
-        pattern=r'^\d{4}-\d{2}-\d{3}$',
-        error_message='Логин должен быть в формате XXXX-XX-XXX',
-        example='1234-56-789'
-    )
+    if not re.match(r'^\d{4}-\d{2}-\d{3}$', value):
+        raise ValidationError('Логин должен быть в формате XXXX-XX-XXX, например: 1234-56-789.')
 
 
 def validate_location_code(value):
-    validate_pattern(
-        value,
-        pattern=r'^\d{5}$',
-        error_message='Код объекта должен содержать ровно 5 цифр',
-        example='22256'
-    )
+    if not re.match(r'^\d{5}$', value):
+        raise ValidationError('Код объекта должен содержать ровно 5 цифр, например: 22256.')
 
 
 def validate_organization_inn(value):
-    validate_pattern(
-        value,
-        pattern=r'^\d{10}$',
-        error_message='ИНН содержит 10 цифр',
-        example='1234567890'
-    )
+    if not re.match(r'^\d{10}$', value):
+        raise ValidationError('ИНН содержит 10 цифр, например: 1234567890.')
 
-
-# ======================
-# МОДЕЛИ
-# ======================
 
 class Organization(models.Model):
     """Модель головной организации"""
@@ -280,12 +220,12 @@ class EmployeeHistory(models.Model):
         'Employee',
         on_delete=models.CASCADE,
         verbose_name='Сотрудник',
-        related_name='history_records'
+        related_name='history_records'  # ← избегаем конфликта с возможным полем 'history'
     )
 
     department = models.ForeignKey(
         'Department',
-        on_delete=models.PROTECT,
+        on_delete=models.PROTECT,  # ← лучше PROTECT, чем SET_NULL
         verbose_name='Подразделение'
     )
 
@@ -342,11 +282,13 @@ class EmployeeHistory(models.Model):
         ]
 
     def clean(self):
+        """Валидация на уровне модели"""
         if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError({
                 'end_date': 'Дата окончания не может быть раньше даты начала.'
             })
 
+        # Проверка: только одна запись может быть активной
         if self.is_active and self.employee_id:
             active_count = EmployeeHistory.objects.filter(
                 employee=self.employee,
@@ -359,7 +301,7 @@ class EmployeeHistory(models.Model):
                 )
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.full_clean()  # вызываем валидацию
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -375,16 +317,14 @@ class Employee(models.Model):
     first_name = models.CharField(max_length=100, verbose_name='Имя')
     last_name = models.CharField(max_length=100, verbose_name='Фамилия')
     second_name = models.CharField(max_length=100, verbose_name='Отчество', blank=True, default='')
-    email = models.EmailField(verbose_name='Электронная почта', unique=True)
+    email = models.EmailField(max_length=50, verbose_name='Электронная почта', unique=True)
     kabinet = models.CharField(max_length=4, verbose_name='Кабинет', blank=True, default='')
     phone = models.CharField(max_length=15, verbose_name='Телефон', blank=True, default='')
-    image = models.ImageField(
-        upload_to=employee_photo_upload_path,
-        verbose_name='Фото',
-        null=True,
-        blank=True,
-        validators=[validate_image_file]
-    )
+    image = models.ImageField(upload_to=get_employee_image_path,
+                              verbose_name='Фото',
+                              null=True,
+                              blank=True,
+                              validators=[validate_image_file])
     login = models.CharField(
         max_length=11,
         verbose_name='Логин',
@@ -422,11 +362,6 @@ class Employee(models.Model):
         ordering = ['-created']
         verbose_name = 'Сотрудник'
         verbose_name_plural = 'Сотрудники'
-        indexes = [
-            models.Index(fields=['last_name', 'first_name']),
-            models.Index(fields=['login']),
-            models.Index(fields=['available', 'department']),
-        ]
 
     def __str__(self):
         last_initial = self.first_name[0] if self.first_name else ''
@@ -476,7 +411,7 @@ class Equipment(models.Model):
         ('write_off', _('На списании')),
         ('written_off', _('Списано')),
         ('temporary', _('Выдано во временное пользование')),
-        ('assigned', _('Закреплено за сотрудником')),
+        ('assigned', _('Закреплено за сотрудником')),  # ← добавлено!
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -537,11 +472,11 @@ class Equipment(models.Model):
         blank=True,
         null=True,
         help_text='Имя в сети (например, PC-001)',
-        unique=True
+        unique=True  # ← часто требуется уникальность
     )
 
     photo = models.ImageField(
-        upload_to=equipment_photo_upload_path,
+        upload_to='equipment/photos/%Y/%m/%d/',
         verbose_name='Фотография',
         blank=True,
         null=True,
@@ -564,7 +499,7 @@ class Equipment(models.Model):
         null=True,
         blank=True,
         verbose_name='Ответственный',
-        related_name='assigned_equipment'
+        related_name='assigned_equipment'  # ← лучше имя
     )
 
     comment = models.TextField(blank=True, verbose_name='Комментарий')
@@ -578,23 +513,26 @@ class Equipment(models.Model):
         verbose_name = 'Оборудование'
         verbose_name_plural = 'Оборудование'
         constraints = [
+            # Если статус "закреплено" — должен быть ответственный
             models.CheckConstraint(
                 condition=(
-                    models.Q(status='assigned', responsible__isnull=False) |
-                    ~models.Q(status='assigned')
+                        models.Q(status='assigned', responsible__isnull=False) |
+                        ~models.Q(status='assigned')
                 ),
                 name='assigned_requires_responsible'
             ),
+            # Если статус "временно выдано" — должен быть ответственный
             models.CheckConstraint(
                 condition=(
-                    models.Q(status='temporary', responsible__isnull=False) |
-                    ~models.Q(status='temporary')
+                        models.Q(status='temporary', responsible__isnull=False) |
+                        ~models.Q(status='temporary')
                 ),
                 name='temporary_requires_responsible'
             ),
         ]
 
     def clean(self):
+        """Дополнительная валидация"""
         if self.status in ['assigned', 'temporary'] and not self.responsible:
             raise ValidationError(
                 'При статусе "%s" необходимо указать ответственного.' % dict(self.STATUS_CHOICES)[self.status])
@@ -609,7 +547,7 @@ class Equipment(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.manufacturer.name} {self.model} (SN: {self.serial_number})"
+        return f"{self.manufacturer} {self.model} (SN: {self.serial_number})"
 
 
 class DocumentType(models.Model):
@@ -650,7 +588,7 @@ class Document(models.Model):
     )
 
     file = models.FileField(
-        upload_to=generate_employee_document_path,
+        upload_to=get_employee_document_path,
         verbose_name='Файл документа',
         validators=[validate_document_file],
         help_text='Поддерживаются: PDF, DOC/X, XLS/X, изображения, архивы (до 10 МБ)'
@@ -673,7 +611,7 @@ class Document(models.Model):
 
     class Meta:
         db_table = 'document'
-        ordering = ['-created']
+        ordering = ['-created']  # ← новые документы сверху
         verbose_name = 'Документ'
         verbose_name_plural = 'Документы'
         indexes = [
@@ -685,7 +623,9 @@ class Document(models.Model):
         return f"{self.name} ({self.employee.last_name} {self.employee.first_name[0]}.)"
 
     def clean(self):
+        """Дополнительная валидация"""
         if self.file:
+            # Проверка: имя файла не должно содержать запрещённых символов
             bad_chars = '<>:"/\\|?*'
             if any(c in self.file.name for c in bad_chars):
                 raise ValidationError({
@@ -698,11 +638,13 @@ class Document(models.Model):
 
     @property
     def file_extension(self):
+        """Возвращает расширение файла без точки, например: 'pdf'"""
         _, ext = os.path.splitext(self.file.name)
         return ext.lower().lstrip('.')
 
     @property
     def file_size_mb(self):
+        """Возвращает размер файла в МБ (округлённый)"""
         if self.file and self.file.size:
             return round(self.file.size / (1024 * 1024), 2)
         return 0

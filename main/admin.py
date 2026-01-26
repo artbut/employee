@@ -1,9 +1,10 @@
 import os
+from django.utils.html import format_html
 from django.contrib import admin
 from django.core.files.storage import default_storage
 from django.utils.safestring import mark_safe
 from .models import Organization, Location, Department, Position, Employee, EmployeeHistory, EquipmentType, \
-    Manufacturer, Equipment, Document, DocumentType
+    Manufacturer, Equipment, Document, DocumentType, LinuxCategory, LinuxCommand, LinuxCheatsheet
 
 
 @admin.register(Organization)
@@ -126,7 +127,6 @@ class EmployeeHistoryInline(admin.TabularInline):
         return qs.select_related('department', 'position', 'location')
 
 
-# Обновите EmployeeAdmin: добавьте inline
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('post_photo','last_name', 'first_name', 'second_name', 'login', 'department', 'position', 'organization', 'kabinet', 'phone', 'location_code', 'available', 'created')
@@ -261,3 +261,78 @@ class DocumentAdmin(admin.ModelAdmin):
             return mark_safe(f'<a href="{obj.file.url}" target="_blank">📄 Открыть</a>')
         return "—"
     file_link.short_description = 'Файл'
+
+
+class LinuxCommandInline(admin.TabularInline):
+    model = LinuxCommand
+    extra = 1
+    fields = ('command', 'description', 'difficulty', 'order')
+    ordering = ('order',)
+
+
+@admin.register(LinuxCategory)
+class LinuxCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'icon', 'order', 'command_count', 'created')
+    list_editable = ('order',)
+    search_fields = ('name', 'description')
+    inlines = [LinuxCommandInline]
+
+    def command_count(self, obj):
+        return obj.commands.count()
+
+    command_count.short_description = 'Количество команд'
+
+
+@admin.register(LinuxCommand)
+class LinuxCommandAdmin(admin.ModelAdmin):
+    list_display = ('command', 'category', 'difficulty_display', 'is_favorite', 'views', 'order')
+    list_filter = ('category', 'difficulty', 'is_favorite', 'created')
+    search_fields = ('command', 'description', 'tags')
+    list_editable = ('order', 'is_favorite')
+    fieldsets = (
+        ('Основное', {
+            'fields': ('command', 'description', 'category', 'difficulty', 'tags')
+        }),
+        ('Детали', {
+            'fields': ('usage', 'options', 'examples'),
+            'classes': ('collapse',)
+        }),
+        ('Дополнительно', {
+            'fields': ('is_favorite', 'order', 'views')
+        })
+    )
+
+    def difficulty_display(self, obj):
+        colors = {
+            'beginner': 'green',
+            'intermediate': 'orange',
+            'advanced': 'red'
+        }
+        color = colors.get(obj.difficulty, 'gray')
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_difficulty_display()
+        )
+
+    difficulty_display.short_description = 'Сложность'
+
+
+@admin.register(LinuxCheatsheet)
+class LinuxCheatsheetAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_published', 'views', 'download_count', 'created')
+    list_filter = ('is_published', 'created', 'categories')
+    search_fields = ('title', 'description', 'content')
+    filter_horizontal = ('categories', 'commands')
+    fieldsets = (
+        ('Основное', {
+            'fields': ('title', 'description', 'content', 'is_published')
+        }),
+        ('Связи', {
+            'fields': ('categories', 'commands'),
+            'classes': ('collapse',)
+        }),
+        ('Статистика', {
+            'fields': ('views', 'download_count')
+        })
+    )

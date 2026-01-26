@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ cheatsheet.title }} - Печать</title>
+    <style>
+        @media print {
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page-break {
+                page-break-after: always;
+            }
+
+            h1, h2, h3 {
+                color: #2c3e50;
+            }
+
+            .command-block {
+                margin-bottom: 25px;
+                padding: 15px;
+                border-left: 4px solid #3498db;
+                background-color: #f8f9fa;
+                page-break-inside: avoid;
+            }
+
+            .command-title {
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+                color: #2980b9;
+            }
+
+            .usage {
+                font-family: 'Courier New', monospace;
+                background-color: #ecf0f1;
+                padding: 8px;
+                border-radius: 4px;
+                margin: 10px 0;
+            }
+
+            .examples {
+                background-color: #f9f9f9;
+                padding: 10px;
+                border-left: 3px solid #2ecc71;
+                margin: 10px 0;
+            }
+
+            .difficulty {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-left: 10px;
+            }
+
+            .difficulty-beginner {
+                background-color: #d4edda;
+                color: #155724;
+            }
+
+            .difficulty-intermediate {
+                background-color: #fff3cd;
+                color: #856404;
+            }
+
+            .difficulty-advanced {
+                background-color: #f8d7da;
+                color: #721c24;
+            }
+
+            .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                font-size: 12px;
+                color: #777;
+                text-align: center;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+
+            th {
+                background-color: #34495e;
+                color: white;
+                padding: 10px;
+                text-align: left;
+            }
+
+            td {
+                padding: 8px 10px;
+                border-bottom: 1px solid #ddd;
+            }
+
+            tr:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+        }
+
+        @media screen {
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+
+            .print-header {
+                background-color: #2c3e50;
+                color: white;
+                padding: 20px;
+                margin: -20px -20px 20px -20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .print-controls {
+                background-color: white;
+                padding: 15px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+
+            .print-button {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                margin-right: 10px;
+            }
+
+            .print-button:hover {
+                background-color: #2980b9;
+            }
+
+            .content {
+                background-color: white;
+                padding: 30px;
+                border-radius: 5px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+
+            h1 {
+                color: #2c3e50;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 10px;
+            }
+
+            .command-block {
+                margin-bottom: 25px;
+                padding: 20px;
+                border-left: 4px solid #3498db;
+                background-color: #f8f9fa;
+                border-radius: 0 5px 5px 0;
+            }
+
+            .command-title {
+                font-family: 'Courier New', monospace;
+                font-size: 18px;
+                font-weight: bold;
+                color: #2980b9;
+                margin-bottom: 10px;
+            }
+
+            .usage {
+                font-family: 'Courier New', monospace;
+                background-color: #ecf0f1;
+                padding: 10px;
+                border-radius: 4px;
+                margin: 10px 0;
+                overflow-x: auto;
+            }
+
+            .examples {
+                background-color: #f9f9f9;
+                padding: 15px;
+                border-left: 3px solid #2ecc71;
+                margin: 15px 0;
+                border-radius: 0 4px 4px 0;
+            }
+
+            .difficulty {
+                display: inline-block;
+                padding: 5px 10px;
+                border-radius: 3px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-left: 10px;
+            }
+
+            .difficulty-beginner {
+                background-color: #d4edda;
+                color: #155724;
+            }
+
+            .difficulty-intermediate {
+                background-color: #fff3cd;
+                color: #856404;
+            }
+
+            .difficulty-advanced {
+                background-color: #f8d7da;
+                color: #721c24;
+            }
+
+            .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                font-size: 14px;
+                color: #777;
+                text-align: center;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+
+            th {
+                background-color: #34495e;
+                color: white;
+                padding: 12px 15px;
+                text-align: left;
+            }
+
+            td {
+                padding: 10px 15px;
+                border-bottom: 1px solid #ddd;
+            }
+
+            tr:hover {
+                background-color: #f5f5f5;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-header no-print">
+        <h1 style="margin: 0; color: white;">{{ cheatsheet.title }}</h1>
+        <div class="print-controls">
+            <button class="print-button" onclick="window.print()">
+                🖨️ Печать
+            </button>
+            <a href="{% url 'main:download_cheatsheet' cheatsheet.id 'pdf' %}" class="print-button" style="text-decoration: none; display: inline-block;">
+                📥 Скачать PDF
+            </a>
+            <a href="{% url 'main:linux_cheatsheets' %}" class="print-button" style="background-color: #95a5a6; text-decoration: none; display: inline-block;">
+                ← Назад
+            </a>
+        </div>
+    </div>
+
+    <div class="content">
+        <h1>{{ cheatsheet.title }}</h1>
+
+        {% if cheatsheet.description %}
+        <div class="description">
+            <p><strong>Описание:</strong> {{ cheatsheet.description }}</p>
+        </div>
+        {% endif %}
+
+        {% if cheatsheet.categories.exists %}
+        <div class="categories">
+            <p><strong>Категории:</strong>
+                {% for category in cheatsheet.categories.all %}
+                <span class="category-tag">{{ category.name }}</span>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+        </div>
+        {% endif %}
+
+        {% if commands %}
+        <h2>Команды ({{ commands.count }})</h2>
+
+        <!-- Сводная таблица -->
+        <table>
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Команда</th>
+                    <th>Описание</th>
+                    <th>Сложность</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for command in commands %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><code>{{ command.command }}</code></td>
+                    <td>{{ command.description|truncatechars:80 }}</td>
+                    <td>
+                        <span class="difficulty difficulty-{{ command.difficulty }}">
+                            {{ command.get_difficulty_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Детальная информация -->
+        <h2>Детальная информация</h2>
+
+        {% for command in commands %}
+        <div class="command-block">
+            <div class="command-header">
+                <span class="command-title">{{ command.command }}</span>
+                <span class="difficulty difficulty-{{ command.difficulty }}">
+                    {{ command.get_difficulty_display }}
+                </span>
+            </div>
+
+            <p><strong>Описание:</strong> {{ command.description }}</p>
+
+            {% if command.usage %}
+            <div class="usage">
+                <strong>Использование:</strong><br>
+                <code>{{ command.usage }}</code>
+            </div>
+            {% endif %}
+
+            {% if command.get_options_list %}
+            <div class="options">
+                <strong>Основные опции:</strong>
+                <ul>
+                    {% for option in command.get_options_list %}
+                    <li><code>{{ option }}</code></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if command.get_examples_list %}
+            <div class="examples">
+                <strong>Примеры:</strong>
+                {% for example in command.get_examples_list %}
+                <div><code>{{ example }}</code></div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <div class="footer">
+            <p>Сгенерировано: {% now "d.m.Y H:i" %}</p>
+            <p>Скачиваний: {{ cheatsheet.download_count }}</p>
+            <p class="no-print">Для печати используйте Ctrl+P или кнопку печати выше</p>
+        </div>
+    </div>
+
+    <script>
+        // Автоматическая печать при загрузке, если в URL есть параметр print
+        if (window.location.search.includes('print=true')) {
+            window.print();
+        }
+
+        // Добавляем обработчик для печати
+        window.addEventListener('beforeprint', function() {
+            // Можно добавить дополнительные действия перед печатью
+            console.log('Начало печати...');
+        });
+
+        window.addEventListener('afterprint', function() {
+            console.log('Печать завершена');
+        });
+    </script>
+</body>
+</html>

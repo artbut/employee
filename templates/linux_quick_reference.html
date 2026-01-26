@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Быстрая справка по Linux{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0"><i class="fas fa-bolt"></i> Быстрая справка по Linux</h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">Самые часто используемые команды Linux для повседневной работы.</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="fas fa-user-graduate"></i> Для новичков</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Команда</th>
+                                        <th>Описание</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for command in basic_commands %}
+                                    <tr>
+                                        <td><code>{{ command.command }}</code></td>
+                                        <td>{{ command.description|truncatechars:40 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <a href="{% url 'main:linux_commands' %}?difficulty=beginner" class="btn btn-sm btn-success w-100">
+                            <i class="fas fa-list"></i> Все команды для новичков
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0"><i class="fas fa-user"></i> Средний уровень</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Команда</th>
+                                        <th>Описание</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for command in intermediate_commands %}
+                                    <tr>
+                                        <td><code>{{ command.command }}</code></td>
+                                        <td>{{ command.description|truncatechars:40 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <a href="{% url 'main:linux_commands' %}?difficulty=intermediate" class="btn btn-sm btn-warning w-100">
+                            <i class="fas fa-list"></i> Все команды среднего уровня
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0"><i class="fas fa-user-ninja"></i> Продвинутый</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Команда</th>
+                                        <th>Описание</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for command in advanced_commands %}
+                                    <tr>
+                                        <td><code>{{ command.command }}</code></td>
+                                        <td>{{ command.description|truncatechars:40 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <a href="{% url 'main:linux_commands' %}?difficulty=advanced" class="btn btn-sm btn-danger w-100">
+                            <i class="fas fa-list"></i> Все продвинутые команды
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="fas fa-clipboard-list"></i> Шпаргалка по категориям</h4>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="categoriesAccordion">
+                    {% for category in categories %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}">
+                                <i class="fas {{ category.icon|default:'fa-folder' }} me-2"></i>
+                                {{ category.name }}
+                                <span class="badge bg-secondary ms-2">{{ category.commands.count }}</span>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#categoriesAccordion">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    {% for command in category.commands.all|slice:":6" %}
+                                    <div class="col-md-6 mb-2">
+                                        <code>{{ command.command }}</code> - {{ command.description|truncatechars:60 }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if category.commands.count > 6 %}
+                                <div class="text-center mt-3">
+                                    <a href="{% url 'main:linux_commands' %}?category={{ category.id }}" class="btn btn-sm btn-outline-info">
+                                        Показать все {{ category.commands.count }} команд
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0"><i class="fas fa-print"></i> Распечатать шпаргалку</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>PDF версия</h5>
+                        <p>Скачайте готовую PDF шпаргалку со всеми командами.</p>
+                        <button class="btn btn-danger">
+                            <i class="fas fa-file-pdf"></i> Скачать PDF
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Для печати</h5>
+                        <p>Распечатайте эту страницу для быстрого доступа к командам.</p>
+                        <button class="btn btn-primary" onclick="window.print()">
+                            <i class="fas fa-print"></i> Печать
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .navbar, .card-footer, .btn, .accordion-button:not(.collapsed) {
+        display: none !important;
+    }
+    .card {
+        border: none !important;
+    }
+    .accordion-collapse {
+        display: block !important;
+    }
+}
+</style>
+{% endblock %}
