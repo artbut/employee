@@ -1,31 +1,56 @@
-import os, re, uuid
+import os
+import re
+import uuid
+from typing import Set
 from django.db import models
 from django.db.models import Q, F
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
+from django.core.files.storage import FileSystemStorage
 
-def get_employee_document_path(instance, filename):
-    """Путь: documents/employee_id/YYYY/MM/DD/filename"""
-    ext = os.path.splitext(filename)[1].lower()
-    safe_filename = f"{uuid.uuid4().hex}{ext}"
-    from django.utils import timezone
-    now = timezone.now()
-    return f"documents/{instance.employee.id}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
+# ======================
+# КОНСТАНТЫ ДЛЯ ФАЙЛОВ
+# ======================
 
-
-def validate_document_file(value):
-    """Валидация загружаемого документа"""
-    # 1. Размер
-    max_size = 10 * 1024 * 1024  # 10 МБ
-    if value.size > max_size:
-        raise ValidationError(f'Размер файла не должен превышать 10 МБ. Текущий: {value.size / 1024 / 1024:.1f} МБ.')
-
-    # 2. Расширения (только безопасные)
-    allowed_extensions = {
+FILE_EXTENSIONS = {
+    'images': {'.jpg', '.jpeg', '.png', '.gif', '.webp'},
+    'equipment_images': {'.jpg', '.jpeg', '.png', '.webp'},
+    'documents': {
         '.pdf', '.doc', '.docx', '.xls', '.xlsx',
         '.jpg', '.jpeg', '.png', '.zip', '.rar'
-    }
+    },
+}
+
+FILE_SIZE_LIMITS = {
+    'employee_photo': 2,  # MB
+    'equipment_photo': 5,  # MB
+    'document': 10,  # MB
+}
+
+UPLOAD_PATHS = {
+    'employee_photos': 'employee/photos',
+    'equipment_photos': 'equipment/photos',
+    'employee_documents': 'documents',
+}
+
+
+# ======================
+# УНИВЕРСАЛЬНЫЕ ВАЛИДАТОРЫ И ПУТИ
+# ======================
+
+def validate_file(value, max_size_mb: int, allowed_extensions: Set[str], allow_multiple_dots: bool = False):
+    """Универсальный валидатор для файлов и изображений."""
+    # Размер
+    max_size_bytes = max_size_mb * 1024 * 1024
+    if value.size > max_size_bytes:
+        raise ValidationError(
+            f'Размер файла не должен превышать {max_size_mb} МБ. '
+            f'Текущий: {value.size / 1024 / 1024:.1f} МБ.'
+        )
+
+    # Расширение
     ext = os.path.splitext(value.name)[1].lower()
     if ext not in allowed_extensions:
         raise ValidationError(
@@ -33,73 +58,108 @@ def validate_document_file(value):
             f'Разрешены: {", ".join(sorted(allowed_extensions))}'
         )
 
-    # 3. Защита от двойного расширения (например, .pdf.exe)
-    base_name = os.path.basename(value.name)
-    if base_name.count('.') > 1:
-        # Разрешаем только один дополнительный символ (например, "file.tar.gz")
-        parts = base_name.split('.')
-        if len(parts) > 3 or (len(parts) == 3 and parts[-1] not in {'gz', 'bz2'}):
-            raise ValidationError('Подозрительное имя файла. Убедитесь, что расширение корректно.')
-
-
-
-def get_employee_image_path(instance, filename):
-    """Генерация пути с датой и UUID, чтобы избежать конфликтов имён файлов"""
-    ext = filename.split('.')[-1]
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    # Используем текущее время, если объект ещё не сохранён
-    from django.utils import timezone
-    created = instance.created or timezone.now()
-    return f"employee/{created.strftime('%Y/%m/%d')}/{filename}"
+    # Защита от двойного расширения
+    if not allow_multiple_dots and value.name.count('.') > 1:
+        raise ValidationError('Подозрительное имя файла. Разрешено только одно расширение.')
 
 
 def validate_image_file(value):
-    # Проверка размера
-    filesize = value.size
-    max_size = 2 * 1024 * 1024  # 2MB
-    if filesize > max_size:
-        raise ValidationError(f'Размер файла не должен превышать 2 МБ. Текущий размер: {filesize / 1024 / 1024:.1f} МБ.')
-
-    # Проверка расширения
-    ext = os.path.splitext(value.name)[1].lower()
-    allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-    if ext not in allowed_extensions:
-        raise ValidationError(f'Недопустимое расширение файла: {ext}. Допустимые: {", ".join(allowed_extensions)}')
+    """Валидация фото сотрудника (2 МБ, изображения)"""
+    return validate_file(
+        value,
+        max_size_mb=FILE_SIZE_LIMITS['employee_photo'],
+        allowed_extensions=FILE_EXTENSIONS['images']
+    )
 
 
 def validate_equipment_image(value):
-    """Валидация изображения оборудования"""
-    # Размер: до 5 МБ
-    filesize = value.size
-    max_size = 5 * 1024 * 1024  # 5MB
-    if filesize > max_size:
-        raise ValidationError(f'Размер изображения не должен превышать 5 МБ. Текущий: {filesize / 1024 / 1024:.1f} МБ.')
+    """Валидация фото оборудования (5 МБ, изображения)"""
+    return validate_file(
+        value,
+        max_size_mb=FILE_SIZE_LIMITS['equipment_photo'],
+        allowed_extensions=FILE_EXTENSIONS['equipment_images']
+    )
 
-    # Расширения
-    ext = os.path.splitext(value.name)[1].lower()
-    allowed_extensions = ['.jpg', '.jpeg', '.png', '.webp']
-    if ext not in allowed_extensions:
-        raise ValidationError(
-            f'Недопустимый формат изображения: {ext}. '
-            f'Разрешены: {", ".join(allowed_extensions)}'
-        )
+
+def validate_document_file(value):
+    """Валидация документов (10 МБ, офисные форматы + архивы)"""
+    return validate_file(
+        value,
+        max_size_mb=FILE_SIZE_LIMITS['document'],
+        allowed_extensions=FILE_EXTENSIONS['documents'],
+        allow_multiple_dots=True
+    )
+
+
+# Функции для генерации путей
+def employee_photo_upload_path(instance, filename):
+    """Путь для фото сотрудника: employee/photos/YYYY/MM/DD/<uuid>.ext"""
+    ext = os.path.splitext(filename)[1].lower()
+    safe_filename = f"{uuid.uuid4().hex}{ext}"
+    now = timezone.now()
+    return f"{UPLOAD_PATHS['employee_photos']}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
+
+
+def equipment_photo_upload_path(instance, filename):
+    """Путь для фото оборудования: equipment/photos/YYYY/MM/DD/<uuid>.ext"""
+    ext = os.path.splitext(filename)[1].lower()
+    safe_filename = f"{uuid.uuid4().hex}{ext}"
+    now = timezone.now()
+    return f"{UPLOAD_PATHS['equipment_photos']}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
+
+
+def generate_employee_document_path(instance, filename):
+    """Путь: documents/<employee_id>/YYYY/MM/DD/<uuid>.ext"""
+    ext = os.path.splitext(filename)[1].lower()
+    safe_filename = f"{uuid.uuid4().hex}{ext}"
+    now = timezone.now()
+    return f"{UPLOAD_PATHS['employee_documents']}/{instance.employee.id}/{now.strftime('%Y/%m/%d')}/{safe_filename}"
+
+
+# ======================
+# ВАЛИДАТОРЫ ДЛЯ СПЕЦИФИЧНЫХ ПОЛЕЙ
+# ======================
+
+def validate_pattern(value, pattern: str, error_message: str, example: str = None):
+    """Универсальный валидатор для проверки по регулярному выражению"""
+    if not re.match(pattern, value):
+        msg = error_message
+        if example:
+            msg += f', например: {example}'
+        raise ValidationError(msg)
 
 
 def validate_login(value):
     """Валидатор для логина в формате 0000-00-000 (всего 11 символов)"""
-    if not re.match(r'^\d{4}-\d{2}-\d{3}$', value):
-        raise ValidationError('Логин должен быть в формате XXXX-XX-XXX, например: 1234-56-789.')
+    validate_pattern(
+        value,
+        pattern=r'^\d{4}-\d{2}-\d{3}$',
+        error_message='Логин должен быть в формате XXXX-XX-XXX',
+        example='1234-56-789'
+    )
 
 
 def validate_location_code(value):
-    if not re.match(r'^\d{5}$', value):
-        raise ValidationError('Код объекта должен содержать ровно 5 цифр, например: 22256.')
+    validate_pattern(
+        value,
+        pattern=r'^\d{5}$',
+        error_message='Код объекта должен содержать ровно 5 цифр',
+        example='22256'
+    )
 
 
 def validate_organization_inn(value):
-    if not re.match(r'^\d{10}$', value):
-        raise ValidationError('ИНН содержит 10 цифр, например: 1234567890.')
+    validate_pattern(
+        value,
+        pattern=r'^\d{10}$',
+        error_message='ИНН содержит 10 цифр',
+        example='1234567890'
+    )
 
+
+# ======================
+# МОДЕЛИ
+# ======================
 
 class Organization(models.Model):
     """Модель головной организации"""
@@ -220,12 +280,12 @@ class EmployeeHistory(models.Model):
         'Employee',
         on_delete=models.CASCADE,
         verbose_name='Сотрудник',
-        related_name='history_records'  # ← избегаем конфликта с возможным полем 'history'
+        related_name='history_records'
     )
 
     department = models.ForeignKey(
         'Department',
-        on_delete=models.PROTECT,  # ← лучше PROTECT, чем SET_NULL
+        on_delete=models.PROTECT,
         verbose_name='Подразделение'
     )
 
@@ -282,13 +342,11 @@ class EmployeeHistory(models.Model):
         ]
 
     def clean(self):
-        """Валидация на уровне модели"""
         if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError({
                 'end_date': 'Дата окончания не может быть раньше даты начала.'
             })
 
-        # Проверка: только одна запись может быть активной
         if self.is_active and self.employee_id:
             active_count = EmployeeHistory.objects.filter(
                 employee=self.employee,
@@ -301,7 +359,7 @@ class EmployeeHistory(models.Model):
                 )
 
     def save(self, *args, **kwargs):
-        self.full_clean()  # вызываем валидацию
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -317,14 +375,16 @@ class Employee(models.Model):
     first_name = models.CharField(max_length=100, verbose_name='Имя')
     last_name = models.CharField(max_length=100, verbose_name='Фамилия')
     second_name = models.CharField(max_length=100, verbose_name='Отчество', blank=True, default='')
-    email = models.EmailField(max_length=50, verbose_name='Электронная почта', unique=True)
+    email = models.EmailField(verbose_name='Электронная почта', unique=True)
     kabinet = models.CharField(max_length=4, verbose_name='Кабинет', blank=True, default='')
     phone = models.CharField(max_length=15, verbose_name='Телефон', blank=True, default='')
-    image = models.ImageField(upload_to=get_employee_image_path,
-                              verbose_name='Фото',
-                              null=True,
-                              blank=True,
-                              validators=[validate_image_file])
+    image = models.ImageField(
+        upload_to=employee_photo_upload_path,
+        verbose_name='Фото',
+        null=True,
+        blank=True,
+        validators=[validate_image_file]
+    )
     login = models.CharField(
         max_length=11,
         verbose_name='Логин',
@@ -362,6 +422,11 @@ class Employee(models.Model):
         ordering = ['-created']
         verbose_name = 'Сотрудник'
         verbose_name_plural = 'Сотрудники'
+        indexes = [
+            models.Index(fields=['last_name', 'first_name']),
+            models.Index(fields=['login']),
+            models.Index(fields=['available', 'department']),
+        ]
 
     def __str__(self):
         last_initial = self.first_name[0] if self.first_name else ''
@@ -411,7 +476,7 @@ class Equipment(models.Model):
         ('write_off', _('На списании')),
         ('written_off', _('Списано')),
         ('temporary', _('Выдано во временное пользование')),
-        ('assigned', _('Закреплено за сотрудником')),  # ← добавлено!
+        ('assigned', _('Закреплено за сотрудником')),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -472,11 +537,11 @@ class Equipment(models.Model):
         blank=True,
         null=True,
         help_text='Имя в сети (например, PC-001)',
-        unique=True  # ← часто требуется уникальность
+        unique=True
     )
 
     photo = models.ImageField(
-        upload_to='equipment/photos/%Y/%m/%d/',
+        upload_to=equipment_photo_upload_path,
         verbose_name='Фотография',
         blank=True,
         null=True,
@@ -499,7 +564,7 @@ class Equipment(models.Model):
         null=True,
         blank=True,
         verbose_name='Ответственный',
-        related_name='assigned_equipment'  # ← лучше имя
+        related_name='assigned_equipment'
     )
 
     comment = models.TextField(blank=True, verbose_name='Комментарий')
@@ -513,26 +578,23 @@ class Equipment(models.Model):
         verbose_name = 'Оборудование'
         verbose_name_plural = 'Оборудование'
         constraints = [
-            # Если статус "закреплено" — должен быть ответственный
             models.CheckConstraint(
                 condition=(
-                        models.Q(status='assigned', responsible__isnull=False) |
-                        ~models.Q(status='assigned')
+                    models.Q(status='assigned', responsible__isnull=False) |
+                    ~models.Q(status='assigned')
                 ),
                 name='assigned_requires_responsible'
             ),
-            # Если статус "временно выдано" — должен быть ответственный
             models.CheckConstraint(
                 condition=(
-                        models.Q(status='temporary', responsible__isnull=False) |
-                        ~models.Q(status='temporary')
+                    models.Q(status='temporary', responsible__isnull=False) |
+                    ~models.Q(status='temporary')
                 ),
                 name='temporary_requires_responsible'
             ),
         ]
 
     def clean(self):
-        """Дополнительная валидация"""
         if self.status in ['assigned', 'temporary'] and not self.responsible:
             raise ValidationError(
                 'При статусе "%s" необходимо указать ответственного.' % dict(self.STATUS_CHOICES)[self.status])
@@ -547,7 +609,7 @@ class Equipment(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.manufacturer} {self.model} (SN: {self.serial_number})"
+        return f"{self.manufacturer.name} {self.model} (SN: {self.serial_number})"
 
 
 class DocumentType(models.Model):
@@ -588,7 +650,7 @@ class Document(models.Model):
     )
 
     file = models.FileField(
-        upload_to=get_employee_document_path,
+        upload_to=generate_employee_document_path,
         verbose_name='Файл документа',
         validators=[validate_document_file],
         help_text='Поддерживаются: PDF, DOC/X, XLS/X, изображения, архивы (до 10 МБ)'
@@ -611,7 +673,7 @@ class Document(models.Model):
 
     class Meta:
         db_table = 'document'
-        ordering = ['-created']  # ← новые документы сверху
+        ordering = ['-created']
         verbose_name = 'Документ'
         verbose_name_plural = 'Документы'
         indexes = [
@@ -623,9 +685,7 @@ class Document(models.Model):
         return f"{self.name} ({self.employee.last_name} {self.employee.first_name[0]}.)"
 
     def clean(self):
-        """Дополнительная валидация"""
         if self.file:
-            # Проверка: имя файла не должно содержать запрещённых символов
             bad_chars = '<>:"/\\|?*'
             if any(c in self.file.name for c in bad_chars):
                 raise ValidationError({
@@ -638,13 +698,220 @@ class Document(models.Model):
 
     @property
     def file_extension(self):
-        """Возвращает расширение файла без точки, например: 'pdf'"""
         _, ext = os.path.splitext(self.file.name)
         return ext.lower().lstrip('.')
 
     @property
     def file_size_mb(self):
-        """Возвращает размер файла в МБ (округлённый)"""
         if self.file and self.file.size:
             return round(self.file.size / (1024 * 1024), 2)
         return 0
+
+
+# ======================
+# МОДЕЛИ ДЛЯ LINUX ШПАРГАЛКИ
+# ======================
+
+class LinuxCategory(models.Model):
+    """Категория Linux команд"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, verbose_name='Название категории', unique=True)
+    description = models.TextField(verbose_name='Описание категории', blank=True)
+    icon = models.CharField(
+        max_length=50,
+        verbose_name='Иконка',
+        blank=True,
+        help_text='Название иконки FontAwesome (например: fa-folder, fa-terminal)'
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name='Порядок сортировки')
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'linux_category'
+        verbose_name = 'Категория Linux'
+        verbose_name_plural = 'Категории Linux'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class LinuxCommand(models.Model):
+    """Linux команда"""
+    DIFFICULTY_CHOICES = [
+        ('beginner', 'Новичок'),
+        ('intermediate', 'Средний'),
+        ('advanced', 'Продвинутый'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    command = models.CharField(max_length=200, verbose_name='Команда')
+    description = models.TextField(verbose_name='Описание команды')
+    usage = models.TextField(verbose_name='Использование', help_text='Пример использования команды')
+    options = models.TextField(
+        verbose_name='Опции/ключи',
+        blank=True,
+        help_text='Основные опции команды (каждая с новой строки)'
+    )
+    examples = models.TextField(
+        verbose_name='Примеры',
+        blank=True,
+        help_text='Примеры использования (каждый с новой строки)'
+    )
+    difficulty = models.CharField(
+        max_length=20,
+        verbose_name='Сложность',
+        choices=DIFFICULTY_CHOICES,
+        default='beginner'
+    )
+    category = models.ForeignKey(
+        LinuxCategory,
+        on_delete=models.CASCADE,
+        verbose_name='Категория',
+        related_name='commands'
+    )
+    tags = models.CharField(
+        max_length=255,
+        verbose_name='Теги',
+        blank=True,
+        help_text='Ключевые слова через запятую'
+    )
+    is_favorite = models.BooleanField(default=False, verbose_name='Избранное')
+    views = models.PositiveIntegerField(default=0, verbose_name='Просмотры')
+    order = models.PositiveIntegerField(default=0, verbose_name='Порядок сортировки')
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'linux_command'
+        verbose_name = 'Linux команда'
+        verbose_name_plural = 'Linux команды'
+        ordering = ['order', 'command']
+        unique_together = ('command', 'category')
+
+    def __str__(self):
+        return self.command
+
+    def get_options_list(self):
+        """Возвращает список опций"""
+        if self.options:
+            return [opt.strip() for opt in self.options.split('\n') if opt.strip()]
+        return []
+
+    def get_examples_list(self):
+        """Возвращает список примеров"""
+        if self.examples:
+            return [ex.strip() for ex in self.examples.split('\n') if ex.strip()]
+        return []
+
+    def get_tags_list(self):
+        """Возвращает список тегов"""
+        if self.tags:
+            return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+        return []
+
+    def get_options_dict(self):
+        """Возвращает список словарей с разделенными опциями"""
+        result = []
+        if self.options:
+            for opt in self.options.split('\n'):
+                opt = opt.strip()
+                if not opt:
+                    continue
+
+                # Ищем первый пробел или табуляцию для разделения
+                if ' ' in opt:
+                    parts = opt.split(' ', 1)
+                    result.append({
+                        'option': parts[0].strip(),
+                        'description': parts[1].strip()
+                    })
+                elif '\t' in opt:
+                    parts = opt.split('\t', 1)
+                    result.append({
+                        'option': parts[0].strip(),
+                        'description': parts[1].strip()
+                    })
+                else:
+                    result.append({
+                        'option': opt,
+                        'description': 'Опция команды'
+                    })
+        return result
+
+cheatsheet_storage = FileSystemStorage(location='cheatsheets/')
+
+class LinuxCheatsheet(models.Model):
+    """Готовые шпаргалки по Linux"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200, verbose_name='Название шпаргалки')
+    description = models.TextField(verbose_name='Описание', blank=True)
+    content = models.TextField(verbose_name='Содержимое (Markdown)')
+    categories = models.ManyToManyField(LinuxCategory, verbose_name='Категории', blank=True)
+    commands = models.ManyToManyField(LinuxCommand, verbose_name='Команды', blank=True)
+    is_published = models.BooleanField(default=True, verbose_name='Опубликовано')
+    views = models.PositiveIntegerField(default=0, verbose_name='Просмотры')
+    download_count = models.PositiveIntegerField(default=0, verbose_name='Скачиваний')
+    FORMAT_CHOICES = [
+        ('pdf', 'PDF'),
+        ('txt', 'Text'),
+        ('md', 'Markdown'),
+        ('html', 'HTML'),
+    ]
+
+    file_pdf = models.FileField(
+        upload_to='cheatsheets/pdf/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='PDF файл'
+    )
+
+    file_txt = models.FileField(
+        upload_to='cheatsheets/txt/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='Text файл'
+    )
+
+    file_md = models.FileField(
+        upload_to='cheatsheets/md/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='Markdown файл'
+    )
+
+    file_html = models.FileField(
+        upload_to='cheatsheets/html/',
+        storage=cheatsheet_storage,
+        null=True,
+        blank=True,
+        verbose_name='HTML файл'
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'linux_cheatsheet'
+        verbose_name = 'Шпаргалка Linux'
+        verbose_name_plural = 'Шпаргалки Linux'
+        ordering = ['-created']
+
+
+    def get_file_url(self, format_type):
+        """Получить URL файла по формату"""
+        file_field = getattr(self, f'file_{format_type}', None)
+        if file_field:
+            return file_field.url
+        return None
+
+    def has_file(self, format_type):
+        """Проверить наличие файла формата"""
+        file_field = getattr(self, f'file_{format_type}', None)
+        return bool(file_field and file_field.name)
+
+    def __str__(self):
+        return self.title
